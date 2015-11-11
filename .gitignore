@@ -26,3 +26,6 @@
 *.exe
 *.out
 *.app
+*/Release+Asserts/*
+*.d
+Release+Asserts/*
