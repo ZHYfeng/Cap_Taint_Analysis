@@ -11,6 +11,7 @@
 
 #include "Executor.h"
 
+#include "PSOListener.h"
 #include "Context.h"
 #include "CoreStats.h"
 #include "ExternalDispatcher.h"
@@ -26,7 +27,6 @@
 #include "UserSearcher.h"
 #include "ExecutorTimerInfo.h"
 #include "../Solver/SolverStats.h"
-
 #include "klee/ExecutionState.h"
 #include "klee/Expr.h"
 #include "klee/Interpreter.h"
@@ -99,6 +99,7 @@
 #include <errno.h>
 #include <cxxabi.h>
 
+using namespace std;
 using namespace llvm;
 using namespace klee;
 
@@ -1091,6 +1092,21 @@ void Executor::evalAgainst(KInstruction *ki, unsigned index, Thread* thread,
 		sf.locals[index].value = value;
 	}
 
+}
+
+/**
+ * 获取address对应的ObjectPair
+ */
+bool Executor::getMemoryObject(ObjectPair& op, ExecutionState& state,
+		ref<Expr> address) {
+	TimingSolver* solver = getTimeSolver();
+	bool success;
+	if (!state.addressSpace.resolveOne(state, solver, address, op, success)) {
+		address = toConstant(state, address, "resolveOne failure");
+		success = state.addressSpace.resolveOne(cast<ConstantExpr>(address),
+				op);
+	}
+	return success;
 }
 
 void Executor::bindLocal(KInstruction *target, Thread *thread,
@@ -2963,14 +2979,6 @@ void Executor::run(ExecutionState &initialState) {
 		}
 	}
 
-	if (isSymbolicRun) {
-		for (std::vector<BitcodeListener*>::iterator bit =
-				bitcodeListeners.begin(), bie = bitcodeListeners.end();
-				bit != bie; ++bit) {
-			(*bit)->prepareSymbolicRun(initialState);
-		}
-	}
-
 	//insert global mutex ,condition and barrier
 	handleInitializers(initialState);
 
@@ -3097,23 +3105,7 @@ void Executor::run(ExecutionState &initialState) {
 			}
 		}
 
-		if (isSymbolicRun) {
-			for (std::vector<BitcodeListener*>::iterator bit =
-					bitcodeListeners.begin(), bie = bitcodeListeners.end();
-					bit != bie; ++bit) {
-				(*bit)->beforeSymbolicRun(state, ki);
-			}
-		}
-
 		executeInstruction(state, ki);
-
-		if (isSymbolicRun) {
-			for (std::vector<BitcodeListener*>::iterator bit =
-					bitcodeListeners.begin(), bie = bitcodeListeners.end();
-					bit != bie; ++bit) {
-				(*bit)->afterSymbolicRun(state, ki);
-			}
-		}
 
 		if (!isSymbolicRun) {
 			for (std::vector<BitcodeListener*>::iterator bit =
@@ -3185,14 +3177,6 @@ void Executor::run(ExecutionState &initialState) {
 
 	delete searcher;
 	searcher = 0;
-
-	if (isSymbolicRun) {
-		for (std::vector<BitcodeListener*>::iterator bit =
-				bitcodeListeners.begin(), bie = bitcodeListeners.end();
-				bit != bie; ++bit) {
-			(*bit)->afterprepareSymbolicRun(initialState);
-		}
-	}
 
 	if (1) {
 		for (std::vector<BitcodeListener*>::iterator bit =

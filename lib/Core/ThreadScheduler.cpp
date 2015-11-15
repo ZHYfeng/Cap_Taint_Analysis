@@ -47,7 +47,7 @@ ThreadScheduler::~ThreadScheduler() {
 }
 
 RRThreadScheduler::RRThreadScheduler() {
-
+	count = 0;
 }
 
 //拷贝构造，没用
@@ -71,7 +71,7 @@ Thread* RRThreadScheduler::selectNextItem() {
 		reSchedule();
 	}
 	count++;
-	Thread* thread = queue.front();
+//	Thread* thread = queue.front();
 	return queue.front();
 }
 

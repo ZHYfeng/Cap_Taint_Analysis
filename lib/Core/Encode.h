@@ -8,12 +8,13 @@
 #ifndef ENCODE_H_
 #define ENCODE_H_
 
-#include "Event.h"
-#include "RuntimeDataManager.h"
-#include "Trace.h"
+#include "../Core/Trace.h"
 #include <z3++.h>
 #include <stack>
 #include <utility>
+
+#include "../Core/Event.h"
+#include "../Core/RuntimeDataManager.h"
 enum InstType {
 	NormalOp, GlobalVarOp, ThreadOp
 };
@@ -24,7 +25,7 @@ namespace klee {
 
 class Encode {
 private:
-	RuntimeDataManager& runtimeData;
+	RuntimeDataManager* runtimeData;
 	Trace* trace; //all data about encoding
 	context& z3_ctx;
 	solver& z3_solver;
@@ -33,16 +34,16 @@ private:
 	unsigned solvingTimes;
 
 public:
-	Encode(RuntimeDataManager& data, context& c, solver& s) :
+	Encode(RuntimeDataManager* data, context& c, solver& s) :
 			runtimeData(data), z3_ctx(c), z3_solver(s) {
-		trace = data.getCurrentTrace();
+		trace = data->getCurrentTrace();
 		solvingCost = 0.0;
 		formulaNum = 0;
 		solvingTimes = 0;
 	}
 	~Encode() {
-		runtimeData.allFormulaNum += formulaNum;
-		runtimeData.solvingTimes += solvingTimes;
+		runtimeData->allFormulaNum += formulaNum;
+		runtimeData->solvingTimes += solvingTimes;
 	}
 	void buildAllFormula();
 	void showInitTrace();

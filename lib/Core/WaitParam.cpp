@@ -2,7 +2,7 @@
  * WaitParam.cpp
  *
  *  Created on: Jul 24, 2014
- *      Author: klee
+ *      Author: ylc
  */
 
 #include "WaitParam.h"

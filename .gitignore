@@ -26,6 +26,7 @@
 *.exe
 *.out
 *.app
-*/Release+Asserts/*
 *.d
-Release+Asserts/*
+*.bc
+*.ll
+*.dir

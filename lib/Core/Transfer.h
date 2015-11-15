@@ -2,7 +2,7 @@
  * Transfer.h
  *
  *  Created on: Jul 28, 2014
- *      Author: klee
+ *      Author: ylc
  */
 
 #ifndef TRANSFER_H_

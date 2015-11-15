@@ -1,6 +1,7 @@
 //by hy 2015.7.21
 
-#include "DealWithSymbolicExpr.h"
+#include "../Core/DealWithSymbolicExpr.h"
+
 #include "llvm/IR/Instruction.h"
 #include <sstream>
 #include <ostream>

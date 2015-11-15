@@ -8,8 +8,8 @@
 #ifndef RUNTIMEDATAMANAGER_H_
 #define RUNTIMEDATAMANAGER_H_
 
-#include "Trace.h"
-#include "Prefix.h"
+#include "../Core/Trace.h"
+#include "../Core/Prefix.h"
 #include <set>
 namespace klee {
 

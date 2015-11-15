@@ -2,7 +2,8 @@
  * WaitParam.h
  *
  *  Created on: Jul 24, 2014
- *      Author: klee
+ *      Author: ylc
+ *  cond_wait的参数
  */
 
 #ifndef WAITPARAM_H_

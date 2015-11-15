@@ -6,8 +6,8 @@
  */
 
 #include "CondScheduler.h"
-#include "Event.h"
 #include <assert.h>
+#include "Event.h"
 
 using namespace::std;
 

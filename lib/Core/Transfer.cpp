@@ -2,7 +2,7 @@
  * Transfer.cpp
  *
  *  Created on: Jul 28, 2014
- *      Author: klee
+ *      Author: ylc
  */
 
 #include "Transfer.h"

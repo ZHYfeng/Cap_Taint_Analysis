@@ -13,9 +13,10 @@
 #include <map>
 #include <iostream>
 #include <sys/time.h>
+
+#include "Event.h"
 #include "klee/Internal/ADT/RNG.h"
 #include "Thread.h"
-#include "Event.h"
 #include "Prefix.h"
 
 namespace klee {
@@ -50,7 +51,7 @@ public:
 class RRThreadScheduler : public ThreadScheduler {
 private:
 	std::list<Thread*> queue;
-	unsigned int count = 0;
+	unsigned int count;
 public:
 	RRThreadScheduler();
 	RRThreadScheduler(RRThreadScheduler& scheduler, std::map<unsigned, Thread*> &threadMap);

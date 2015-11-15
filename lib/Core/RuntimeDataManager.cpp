@@ -5,8 +5,9 @@
  *      Author: ylc
  */
 
-#include "RuntimeDataManager.h"
-#include "Transfer.h"
+#include "../Core/RuntimeDataManager.h"
+
+#include "../Core/Transfer.h"
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Constants.h"
 #include "llvm/Support/raw_ostream.h"

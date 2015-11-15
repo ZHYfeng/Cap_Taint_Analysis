@@ -24,6 +24,7 @@
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/KModule.h"
 #include "llvm/Support/CallSite.h"
+
 #include <vector>
 #include <string>
 #include <map>
@@ -31,12 +32,10 @@
 
 #include "BitcodeListener.h"
 #include "PSOListener.h"
-#include "TestListener.h"
 #include "MutexManager.h"
 #include "CondManager.h"
 #include "BarrierManager.h"
 #include "Transfer.h"
-#include "TypeUtils.h"
 #include "ThreadScheduler.h"
 #include "Prefix.h"
 
@@ -99,7 +98,7 @@ class Executor : public Interpreter {
   friend class SpecialFunctionHandler;
   friend class StatsTracker;
   friend class PSOListener;
-  friend class TestListener;
+  friend class SymbolicListener;
   friend class CondManager;
 
 public:
@@ -558,6 +557,7 @@ public:
   const Cell& eval(KInstruction *ki, unsigned index,
                    Thread *thread) const;
   void evalAgainst(KInstruction *ki, unsigned index, Thread* thread, ref<Expr> value);
+  bool getMemoryObject(ObjectPair& op, ExecutionState& state, ref<Expr> address);
 
   TimingSolver* getTimeSolver() {
 	  return solver;

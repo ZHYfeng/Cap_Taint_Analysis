@@ -4,8 +4,7 @@
  *  Created on: Jun 10, 2014
  *      Author: xdzhang
  */
-#include "Encode.h"
-#include "Common.h"
+
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
@@ -42,6 +41,7 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
+
 #include <map>
 #include <vector>
 #include <sstream>
@@ -49,11 +49,14 @@
 #include <sys/time.h>
 #include <fstream>
 #include <pthread.h>
-#include "Prefix.h"
 #include <z3.h>
 #include <z3_api.h>
 #include <iostream>
 #include <iomanip>
+
+#include "Prefix.h"
+#include "Encode.h"
+#include "Common.h"
 #include "KQuery2Z3.h"
 
 #define FORMULA_DEBUG 0
@@ -177,7 +180,7 @@ bool Encode::verify() {
 		if (result == z3::sat) {
 			//should compute the prefix violating assert
 			cerr << "Yes!\n";
-			runtimeData.clearAllPrefix();
+			runtimeData->clearAllPrefix();
 			//former :: replay the bug trace and erminate klee. later:: terminate klee directly
 			if (true) {
 				vector<Event*> vecEvent;
@@ -185,13 +188,13 @@ bool Encode::verify() {
 				Prefix* prefix = new Prefix(vecEvent, trace->createThreadPoint,
 						ss.str());
 				output << "./output_info/" << prefix->getName() << ".z3expr";
-				runtimeData.addScheduleSet(prefix);
+				runtimeData->addScheduleSet(prefix);
 //			} else {
 				cerr << "Assert Failure at "
 						<< assertFormula[i].first->inst->info->file << ": "
 						<< assertFormula[i].first->inst->info->line << "\n";
-				runtimeData.satBranch++;
-				runtimeData.satCost += cost;
+				runtimeData->satBranch++;
+				runtimeData->satCost += cost;
 #if FORMULA_DEBUG
 				showPrefixInfo(prefix, assertFormula[i].first);
 #endif
@@ -213,7 +216,7 @@ bool Encode::verify() {
 		} else if (result == z3::unsat) {
 #if BRANCH_INFO
 			cerr << "No!\n";
-			runtimeData.unSatBranch++;
+			runtimeData->unSatBranch++;
 #endif
 		}
 		z3_solver.pop();	//backtrack point 2
@@ -298,15 +301,15 @@ void Encode::check_if() {
 					ss.str());
 			output << "./output_info/" << prefix->getName() << ".z3expr";
 			//printf prefix to DIR output_info
-			runtimeData.addScheduleSet(prefix);
-			runtimeData.satBranch++;
-			runtimeData.satCost += cost;
+			runtimeData->addScheduleSet(prefix);
+			runtimeData->satBranch++;
+			runtimeData->satCost += cost;
 #if FORMULA_DEBUG
 			showPrefixInfo(prefix, ifFormula[i].first);
 #endif
 		} else {
-			runtimeData.unSatBranch++;
-			runtimeData.unSatCost += cost;
+			runtimeData->unSatBranch++;
+			runtimeData->unSatCost += cost;
 		}
 
 #if BRANCH_INFO

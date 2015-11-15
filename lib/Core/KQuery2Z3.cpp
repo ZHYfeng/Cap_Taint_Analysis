@@ -5,7 +5,7 @@
  *
  */
 
-#include "KQuery2Z3.h"
+#include "../Core/KQuery2Z3.h"
 
 #include "klee/Expr.h"
 #include "llvm/ADT/APFloat.h"
