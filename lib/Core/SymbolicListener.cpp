@@ -47,16 +47,10 @@ using namespace llvm;
 
 namespace klee {
 
-std::vector<Event*>::iterator currentEvent, endEvent;
-//此Map更新有三处，全局变量初始化、Store、某些函数。
-std::map<std::string, ref<Expr> > symbolicMap;
-std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
-std::map<string, std::vector<unsigned> > assertMap;
-bool kleeBr;
-
 SymbolicListener::SymbolicListener(Executor* executor, RuntimeDataManager* rdManager) :
 		BitcodeListener(), executor(executor), rdManager(rdManager) {
 	Kind = SymbolicListenerKind;
+	kleeBr = false;
 }
 
 SymbolicListener::~SymbolicListener() {
@@ -68,7 +62,6 @@ SymbolicListener::~SymbolicListener() {
 void SymbolicListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 
 	//收集全局变量初始化值
-//	Trace* trace = rdManager.createNewTrace(executor->executionNum);
 	Trace* trace = rdManager->getCurrentTrace();
 	currentEvent = trace->path.begin();
 	endEvent = trace->path.end();
@@ -411,6 +404,8 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 					symbolicMap[(*currentEvent)->globalVarFullName] = value;
 //					cerr << "load globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
 //					cerr << "load value : " << value << "\n";
+					ref<Expr> constraint = EqExpr::create(value, symbolic);
+					trace->rwSymbolicExpr.push_back(constraint);
 				}
 			} else {
 				//会丢失指针的一些关系约束，但是不影响。

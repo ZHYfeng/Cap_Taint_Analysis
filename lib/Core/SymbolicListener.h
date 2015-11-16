@@ -39,6 +39,12 @@ private:
 	Executor* executor;
 	DealWithSymbolicExpr filter;
 	RuntimeDataManager* rdManager;
+	std::vector<Event*>::iterator currentEvent, endEvent;
+	//此Map更新有两处，Load、某些函数。
+	std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
+	std::map<std::string, std::vector<unsigned> > assertMap;
+	std::map<std::string, ref<Expr> > symbolicMap;
+	bool kleeBr;
 
 private:
 

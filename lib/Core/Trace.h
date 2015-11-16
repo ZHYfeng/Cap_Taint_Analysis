@@ -56,7 +56,9 @@ public:
 	TraceType traceType; //the type of trace
 
 	//by hy 2015.7.21
+	std::map<std::string, ref<Expr> > symbolicMap;
 	std::vector<ref<klee::Expr> > storeSymbolicExpr;
+	std::vector<ref<klee::Expr> > rwSymbolicExpr;
 	std::vector<ref<klee::Expr> > brSymbolicExpr;
 	std::vector<ref<klee::Expr> > assertSymbolicExpr;
 	std::vector<ref<klee::Expr> > kQueryExpr;

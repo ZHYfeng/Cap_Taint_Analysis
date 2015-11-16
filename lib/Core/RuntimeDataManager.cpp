@@ -44,7 +44,6 @@ RuntimeDataManager::~RuntimeDataManager() {
 			ti != te; ti++) {
 		delete *ti;
 	}
-	cerr << "~RuntimeDataManager\n";
 	string ErrorInfo;
 	raw_fd_ostream out_to_file("./output_info/statics.txt", ErrorInfo, 0x0202);
 	stringstream ss;
