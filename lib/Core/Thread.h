@@ -63,14 +63,14 @@ public:
 	  JOIN_BLOCKED,
 	  TERMINATED
   };
-  KInstIterator pc, prevPC;
-  stack_ty stack;
-  unsigned threadId;
-  unsigned incomingBBIndex;
-  Thread* parentThread;
-  ThreadState threadState;
-  AddressSpace* addressSpace;
-  static unsigned nextThreadId;
+	KInstIterator pc, prevPC;
+	unsigned incomingBBIndex;
+	unsigned threadId;
+	Thread* parentThread;
+	AddressSpace* addressSpace;
+	ThreadState threadState;
+	static unsigned nextThreadId;
+	stack_ty stack;
 public:
 	Thread();
 	Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpace, KFunction* kf);

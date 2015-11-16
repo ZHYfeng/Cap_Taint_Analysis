@@ -8,13 +8,13 @@
 #ifndef ENCODE_H_
 #define ENCODE_H_
 
-#include "../Core/Trace.h"
+#include "Trace.h"
 #include <z3++.h>
 #include <stack>
 #include <utility>
 
-#include "../Core/Event.h"
-#include "../Core/RuntimeDataManager.h"
+#include "Event.h"
+#include "RuntimeDataManager.h"
 enum InstType {
 	NormalOp, GlobalVarOp, ThreadOp
 };
@@ -27,15 +27,15 @@ class Encode {
 private:
 	RuntimeDataManager* runtimeData;
 	Trace* trace; //all data about encoding
-	context& z3_ctx;
-	solver& z3_solver;
+	context z3_ctx;
+	solver z3_solver;
 	double solvingCost;
 	unsigned formulaNum;
 	unsigned solvingTimes;
 
 public:
-	Encode(RuntimeDataManager* data, context& c, solver& s) :
-			runtimeData(data), z3_ctx(c), z3_solver(s) {
+	Encode(RuntimeDataManager* data) :
+			runtimeData(data), z3_solver(z3_ctx) {
 		trace = data->getCurrentTrace();
 		solvingCost = 0.0;
 		formulaNum = 0;

@@ -8,15 +8,11 @@
 #ifndef LIB_CORE_LISTENERSERVICE_H_
 #define LIB_CORE_LISTENERSERVICE_H_
 
+#include <vector>
+
+#include "klee/ExecutionState.h"
 #include "BitcodeListener.h"
 #include "RuntimeDataManager.h"
-#include "AddressSpace.h"
-#include "Executor.h"
-#include "Memory.h"
-#include "BarrierInfo.h"
-#include "klee/Internal/Module/KInstruction.h"
-#include "klee/ExecutionState.h"
-
 
 namespace klee {
 
@@ -25,16 +21,23 @@ class ListenerService {
 private:
 	std::vector<BitcodeListener*> bitcodeListeners;
 	RuntimeDataManager rdManager;
+	unsigned runState;
 
 public:
-	void addListener(BitcodeListener* bitcodeListener);
+	ListenerService() {
+		runState = 0;
+	}
+	~ListenerService(){
+
+	}
+	void pushListener(BitcodeListener* bitcodeListener);
 	void removeListener(BitcodeListener* bitcodeListener);
+	void popListener();
 
 	RuntimeDataManager* getRuntimeDataManager();
-	bool getMemoryObject(ObjectPair& op, ExecutionState& state, ref<Expr> address);
 
+	void Preparation();
 	void beforeRunMethodAsMain(ExecutionState &initialState);
-	void afterPreparation();
 	void executeInstruction(ExecutionState &state, KInstruction *ki);
 	void instructionExecuted(ExecutionState &state, KInstruction *ki);
 	void afterRunMethodAsMain();
@@ -44,11 +47,11 @@ public:
 //	void createCondition(ExecutionState &state, Condition* condition);
 	void createThread(ExecutionState &state, Thread* thread);
 
+	void startControl(Executor* executor);
+	void endControl(Executor* executor);
 
 };
 
 }
-
-
 
 #endif /* LIB_CORE_LISTENERSERVICE_H_ */

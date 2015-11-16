@@ -8,46 +8,25 @@
 #ifndef LIB_CORE_SYMBOLICLISTENER_H_
 #define LIB_CORE_SYMBOLICLISTENER_H_
 
-#include "AddressSpace.h"
 #include "Executor.h"
-#include "Memory.h"
-#include "BarrierInfo.h"
 #include "RuntimeDataManager.h"
 #include "BitcodeListener.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/ExecutionState.h"
 
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-
-#include "llvm/Support/CallSite.h"
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Type.h"
-#include "llvm/IR/DerivedTypes.h"
-#else
-#include "llvm/Instructions.h"
-#include "llvm/Type.h"
-#include "llvm/DerivedTypes.h"
-#endif
-
-namespace llvm	{
+namespace llvm {
 class Type;
 class Constant;
 }
 
 namespace klee {
 
-class SymbolicListener : public BitcodeListener {
+class SymbolicListener: public BitcodeListener {
 public:
-	SymbolicListener(Executor* executor);
+	SymbolicListener(Executor* executor, RuntimeDataManager* rdManager);
 	~SymbolicListener();
 
 	void beforeRunMethodAsMain(ExecutionState &initialState);
-	void afterPreparation();
 	void executeInstruction(ExecutionState &state, KInstruction *ki);
 	void instructionExecuted(ExecutionState &state, KInstruction *ki);
 	void afterRunMethodAsMain();
@@ -61,32 +40,16 @@ private:
 	DealWithSymbolicExpr filter;
 	RuntimeDataManager* rdManager;
 
-	//statics
-	struct timeval start, finish;
-
-
 private:
 
 	//add by hy
-	ref<Expr> manualMakeSymbolic(ExecutionState& state,
-			std::string name, unsigned size, bool isFloat);
-	void storeZeroToExpr(ExecutionState& state, ref<Expr> address, Expr::Width type);
-	ref<Expr> readExpr(ExecutionState &state, ref<Expr> address, Expr::Width size);
-	void getNewPrefix();
+	ref<Expr> manualMakeSymbolic(ExecutionState& state, std::string name,
+			unsigned size, bool isFloat);
+	void storeZeroToExpr(ExecutionState& state, ref<Expr> address,
+			Expr::Width type);
+	ref<Expr> readExpr(ExecutionState &state, ref<Expr> address,
+			Expr::Width size);
 
-	bool isGlobalMO(const MemoryObject* mo) {
-		bool result;
-		if (mo->isGlobal) {
-			result = true;
-		} else {
-			if (mo->isLocal) {
-				result = false;
-			} else {
-				result = true;
-			}
-		}
-		return result;
-	}
 };
 
 }

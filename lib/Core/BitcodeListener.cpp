@@ -5,7 +5,7 @@
  *      Author: ylc
  */
 
-#include "../Core/BitcodeListener.h"
+#include "BitcodeListener.h"
 
 
 namespace klee {

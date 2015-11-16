@@ -1,11 +1,12 @@
 //by hy 2015.7.21
 
-#include "../Core/DealWithSymbolicExpr.h"
-
+#include "DealWithSymbolicExpr.h"
 #include "llvm/IR/Instruction.h"
 #include <sstream>
 #include <ostream>
 #include <set>
+#include <vector>
+#include <map>
 
 namespace klee {
 

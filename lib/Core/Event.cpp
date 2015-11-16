@@ -5,7 +5,7 @@
  *      Author: ylc
  */
 
-#include "../Core/Event.h"
+#include "Event.h"
 
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"

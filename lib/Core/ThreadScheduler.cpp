@@ -15,7 +15,7 @@ using namespace::std;
 namespace klee {
 
 ThreadScheduler* getThreadSchedulerByType(ThreadScheduler::ThreadSchedulerType type) {
-	ThreadScheduler* scheduler;
+	ThreadScheduler* scheduler = NULL;
 	switch (type) {
 	case ThreadScheduler::RR: {
 		scheduler = new RRThreadScheduler();
@@ -33,7 +33,6 @@ ThreadScheduler* getThreadSchedulerByType(ThreadScheduler::ThreadSchedulerType t
 		assert("ThreadSchedulerType error");
 	}
 	}
-
 	return scheduler;
 }
 

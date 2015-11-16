@@ -6,11 +6,13 @@
  */
 
 #include "ListenerService.h"
-#include "BitcodeListener.h"
+#include "PSOListener.h"
+#include "SymbolicListener.h"
+#include "Encode.h"
 
 namespace klee {
 
-void ListenerService::addListener(BitcodeListener* bitcodeListener) {
+void ListenerService::pushListener(BitcodeListener* bitcodeListener) {
 	bitcodeListeners.push_back(bitcodeListener);
 }
 
@@ -24,17 +26,18 @@ void ListenerService::removeListener(BitcodeListener* bitcodeListener) {
 	}
 }
 
+void ListenerService::popListener() {
+	bitcodeListeners.pop_back();
+}
+
+RuntimeDataManager* ListenerService::getRuntimeDataManager() {
+	return &rdManager;
+}
+
 void ListenerService::beforeRunMethodAsMain(ExecutionState &initialState) {
 	for (std::vector<BitcodeListener*>::iterator bit = bitcodeListeners.begin(),
 			bie = bitcodeListeners.end(); bit != bie; ++bit) {
 		(*bit)->beforeRunMethodAsMain(initialState);
-	}
-}
-
-void ListenerService::afterPreparation() {
-	for (std::vector<BitcodeListener*>::iterator bit = bitcodeListeners.begin(),
-			bie = bitcodeListeners.end(); bit != bie; ++bit) {
-		(*bit)->afterPreparation();
 	}
 }
 
@@ -73,6 +76,59 @@ void ListenerService::createThread(ExecutionState &state, Thread* thread) {
 			bie = bitcodeListeners.end(); bit != bie; ++bit) {
 		(*bit)->createThread(state, thread);
 	}
+}
+
+void ListenerService::startControl(Executor* executor){
+	runState = rdManager.runState;
+	switch (runState) {
+	case 0: {
+		BitcodeListener* listener = new PSOListener(executor, &rdManager);
+		pushListener(listener);
+		executor->executionNum++;
+		break;
+	}
+	case 1: {
+		BitcodeListener* listener = new SymbolicListener(executor, &rdManager);
+		pushListener(listener);
+		rdManager.runState = 0;
+		if (executor->prefix) {
+			executor->prefix->reuse();
+		}
+		break;
+	}
+	case 2: {
+		break;
+	}
+	default: {
+		break;
+	}
+	}
+}
+
+void ListenerService::endControl(Executor* executor){
+	switch (runState) {
+	case 0: {
+		popListener();
+		break;
+	}
+	case 1: {
+		popListener();
+		Encode encode(&rdManager);
+		encode.buildAllFormula();
+		if (encode.verify()) {
+			encode.check_if();
+		}
+		executor->getNewPrefix();
+		break;
+	}
+	case 2: {
+		break;
+	}
+	default: {
+		break;
+	}
+	}
+
 }
 
 }

@@ -65,6 +65,7 @@
 #define BIT_WIDTH 64
 #define POINT_BIT_WIDTH 64
 
+
 using namespace llvm;
 using namespace std;
 using namespace z3;
@@ -250,7 +251,7 @@ void Encode::check_if() {
 		//create a backstracking point
 		z3_solver.push();
 		Event* curr = ifFormula[i].first;
-		int branch = (long) ifFormula[i].first->inst->inst;
+//		int branch = (long) ifFormula[i].first->inst->inst;
 		//2: collect info from the two former executions.
 		if (trace->Id >= 2) {
 #if BRANCH_INFO
@@ -947,9 +948,8 @@ z3::sort Encode::llvmTy_to_z3Ty(const Type *typ) {
 		assert(0 && "couldn't handle X86_MMX type!");
 		break;
 	case Type::IntegerTyID: {
-		unsigned num_bit = ((IntegerType *) typ)->getBitWidth();
-		if (num_bit == 1) {
-			return z3_ctx.bool_sort();;
+		if (typ->isIntegerTy(1)) {
+			return z3_ctx.bool_sort();
 		} else {
 			return z3_ctx.bv_sort(BIT_WIDTH);
 		}

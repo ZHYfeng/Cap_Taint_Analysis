@@ -14,16 +14,17 @@
 namespace klee {
 
 class Mutex {
+
+public:
+	unsigned id;
+	std::string name;
+
 private:
 	bool isLocked;
 	unsigned lockedThreadId;
 	//std::list<Thread*> blockedList;
 	//unsigned lockedThread;
 	//MutexScheduler* blockedList;
-
-public:
-	unsigned id;
-	std::string name;
 
 public:
 

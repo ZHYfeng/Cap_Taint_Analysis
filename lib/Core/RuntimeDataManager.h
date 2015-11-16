@@ -8,8 +8,8 @@
 #ifndef RUNTIMEDATAMANAGER_H_
 #define RUNTIMEDATAMANAGER_H_
 
-#include "../Core/Trace.h"
-#include "../Core/Prefix.h"
+#include "Trace.h"
+#include "Prefix.h"
 #include <set>
 namespace klee {
 
@@ -33,6 +33,9 @@ public:
 	double solvingCost;
 	double satCost;
 	double unSatCost;
+
+	unsigned runState;
+
 	RuntimeDataManager();
 	virtual ~RuntimeDataManager();
 

@@ -82,7 +82,7 @@ Searcher *getNewSearcher(Searcher::CoreSearchType type, Executor &executor) {
   case Searcher::DFS: searcher = new DFSSearcher(); break;
   case Searcher::BFS: searcher = new BFSSearcher(); break;
   case Searcher::RandomState: searcher = new RandomSearcher(); break;
-  //case Searcher::RandomPath: searcher = new RandomPathSearcher(executor); break;
+//  case Searcher::RandomPath: searcher = new RandomPathSearcher(executor); break;
   case Searcher::NURS_CovNew: searcher = new WeightedRandomSearcher(WeightedRandomSearcher::CoveringNew); break;
   case Searcher::NURS_MD2U: searcher = new WeightedRandomSearcher(WeightedRandomSearcher::MinDistToUncovered); break;
   case Searcher::NURS_Depth: searcher = new WeightedRandomSearcher(WeightedRandomSearcher::Depth); break;

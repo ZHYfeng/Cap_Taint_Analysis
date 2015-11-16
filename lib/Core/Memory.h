@@ -176,8 +176,8 @@ private:
 public:
   unsigned size;
 
-  bool isFloat;
   bool readOnly;
+  bool isFloat;
 
 public:
   /// Create a new object state for the given memory object with concrete

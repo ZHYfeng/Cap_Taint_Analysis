@@ -6,11 +6,11 @@
  */
 
 #include "PSOListener.h"
-
 #include "klee/Expr.h"
 #include "PTree.h"
 #include "Trace.h"
 #include "Transfer.h"
+
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
@@ -19,76 +19,30 @@
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/raw_ostream.h"
-
-#include "Encode.h"
-
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/DebugInfo.h"
-#else
-#include "llvm/Metadata.h"
-#include "llvm/Module.h"
-#include "llvm/IntrinsicInst.h"
-#include "llvm/Analysis/DebugInfo.h"
-#endif
 
 
 using namespace std;
 using namespace llvm;
 
 #define EVENTS_DEBUG 0
-#define BIT_WIDTH 64
 
 #define PTR 0
-#define PRINT_RUNTIMEINFO 0
 #define DEBUGSTRCPY 0
-#define DEBUGSYMBOLIC 0
 #define COND_DEBUG 0
-bool isPrefixFinished = false;
 
 namespace klee {
 
 Event* lastEvent;
-std::vector<Event*>::iterator currentEvent, endEvent;
-//此Map更新有三处，全局变量初始化、Store、某些函数。
-std::map<std::string, ref<Expr> > symbolicMap;
-std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
-std::map<string, std::vector<unsigned> > assertMap;
-bool kleeBr;
 
-PSOListener::PSOListener(Executor* executor) :
-		BitcodeListener(), executor(executor) {
+PSOListener::PSOListener(Executor* executor, RuntimeDataManager* rdManager) :
+		BitcodeListener(), executor(executor), rdManager(rdManager) {
 	// TODO Auto-generated constructor stub
-#if PRINT_RUNTIMEINFO
-	//获取当前目录绝对路径,由于executeInstruction函数执行过程中相对路径根目录会发生变化（被测程序调用chdir()）,
-	//所以需要提前获取cwd,用绝对路径指定用到的输出文件
-	char current_absolute_path[1000];
-	if (NULL == getcwd(current_absolute_path, 1000)) {
-		assert(0 && "get cwd failed\n");
-	}
-	this->cwd = current_absolute_path;
-	this->cwd.append("/");
-	this->failedTraceDir = this->cwd + "failed_trace/";
-	this->redundantTraceDir = this->cwd + "redundant_trace/";
-	this->uniqueTraceDir = this->cwd + "unique_trace/";
-	this->prefixDir = this->cwd + "prefix/";
-
-	//获取可执行文件位置，用于定位稍候执行的脚本preparation.sh
-	char dir[300] = {0};
-	int n = readlink("/proc/self/exe", dir, 300);
-	string base(dir);
-	base = base.substr(0, base.rfind('/') + 1);
-	this->prepareShellPos = base + "preparation.sh";
-	this->moveShellPos = base + "move.sh";
-	string command = this->prepareShellPos + " " + this->failedTraceDir + " "
-	+ this->redundantTraceDir + " " + this->uniqueTraceDir + " "
-	+ this->prefixDir;
-	int ret = system(command.c_str());
-	assert(WIFEXITED(ret) != 0 && "preparation failed");
-#endif
+	Kind = PSOListenerKind;
 }
 
 PSOListener::~PSOListener() {
@@ -101,9 +55,90 @@ PSOListener::~PSOListener() {
 	}
 }
 
-/**
- * 指令调用消息响应函数，在指令解释执行前被调用
- */
+//消息响应函数，在被测程序解释执行之前调用
+void PSOListener::beforeRunMethodAsMain(ExecutionState &initialState) {
+
+	//收集全局变量初始化值
+	Module* m = executor->kmodule->module;
+	rdManager->createNewTrace(executor->executionNum);
+	for (Module::global_iterator i = m->global_begin(), e = m->global_end();
+			i != e; ++i) {
+		if (i->hasInitializer() && i->getName().str().at(0) != '.') {
+			MemoryObject *mo = executor->globalObjects.find(i)->second;
+			Constant* initializer = i->getInitializer();
+			uint64_t address = mo->address;
+//			cerr << i->getName().str() << " " << initializer->getType()->getTypeID() << endl;
+			handleInitializer(initializer, mo, address);
+		}
+	}
+
+	//获取argc，argv
+//	StackFrame sf = initialState.currentThread->stack.back();
+//	Function* main = sf.kf->function;
+//	Function::arg_iterator ai = main->arg_begin(), ae = main->arg_end();
+//	if (ai != ae) {
+//		// handle argc
+//		ref<Expr> value = sf.locals[0].value;
+//		ConstantExpr* cexpr = dyn_cast < ConstantExpr > (value);
+//		uint64_t argc = cexpr->getZExtValue();
+////		trace->insertArgc(argc);
+//		//ConstantInt* ci = ConstantInt::get(type, argc, true);
+//		if (++ai != ae) {
+//			//handle argv  ignore env
+//			value = sf.locals[1].value;
+//			cexpr = dyn_cast < ConstantExpr > (value);
+//			ObjectPair op;
+//			executor->getMemoryObject(op, initialState, cexpr);
+//			const MemoryObject* mo = op.first;
+//			const ObjectState* os = op.second;
+//			unsigned ptrBytes = Context::get().getPointerWidth() / 8;
+//			IntegerType* chTy =
+//					dyn_cast < IntegerType
+//							> (ai->getType()->getPointerElementType()->getPointerElementType());
+//			for (unsigned i = 0; i < argc; i++) {
+//				uint64_t address = mo->address + i * ptrBytes;
+//				ref<Expr> offset = mo->getOffsetExpr(
+//						ConstantExpr::create(address,
+//								Context::get().getPointerWidth()));
+//				ref<Expr> result = os->read(offset,
+//						Context::get().getPointerWidth());
+//				cexpr = dyn_cast < ConstantExpr > (result.get());
+//				ObjectPair arg;
+//				executor->getMemoryObject(arg, initialState, cexpr);
+//				const MemoryObject* argMo = arg.first;
+//				const ObjectState* argOs = arg.second;
+//				for (unsigned j = 0; j < argMo->size; j++) {
+//					ref<Expr> ch = argOs->read(j, 8);
+//					cexpr = dyn_cast < ConstantExpr > (ch.get());
+//					string name = createVarName(argMo->id, argMo->address + j,
+//							executor->isGlobalMO(argMo));
+//					ConstantInt* ci = ConstantInt::get(chTy,
+//							cexpr->getZExtValue(), true);
+//					trace->insertGlobalVariableInitializer(name, ci);
+//				}
+//
+//			}
+//		}
+//	}
+
+	//
+	unsigned traceNum = executor->executionNum;
+	cerr << endl;
+	cerr << "************************************************************************\n";
+	cerr << "第" << traceNum << "次执行,路径文件为trace" << traceNum << ".txt";
+	if (traceNum == 1) {
+		cerr << " 初始执行" << endl;
+	} else {
+		cerr << " 前缀执行,前缀文件为prefix" << executor->prefix->getName() << ".txt" << endl;
+	}
+	cerr << "************************************************************************\n";
+	cerr << endl;
+#if PRINT_RUNTIMEINFO
+	printPrefix();
+#endif
+}
+
+//指令调用消息响应函数，在指令解释执行前被调用
 void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	Trace* trace = rdManager->getCurrentTrace();
 	Instruction* inst = ki->inst;
@@ -212,7 +247,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				const MemoryObject* pthreadmo = pthreadop.first;
 				ConstantExpr* realAddress = dyn_cast<ConstantExpr>(pthreadAddress.get());
 				uint64_t key = realAddress->getZExtValue();
-				if (isGlobalMO(pthreadmo)) {
+				if (executor->isGlobalMO(pthreadmo)) {
 					item->isGlobal = true;
 				} else {
 					item->isLocal = true;
@@ -248,7 +283,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
-				string mutexName = createVarName(mo->id, param, isGlobalMO(mo));
+				string mutexName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 //				unlock = trace->createEvent(thread->threadId, ki,
 //						Event::VIRTUAL);
 //				unlock->calledFunction = f;
@@ -273,7 +308,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
-				string condName = createVarName(mo->id, param, isGlobalMO(mo));
+				string condName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertWait(condName, item, lock);
 				item->condName = condName;
 			} else {
@@ -290,7 +325,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
-				string condName = createVarName(mo->id, param, isGlobalMO(mo));
+				string condName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertSignal(condName, item);
 				item->condName = condName;
 			} else {
@@ -307,7 +342,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
-				string condName = createVarName(mo->id, param, isGlobalMO(mo));
+				string condName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertSignal(condName, item);
 				item->condName = condName;
 			} else {
@@ -324,7 +359,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
-				string mutexName = createVarName(mo->id, param, isGlobalMO(mo));
+				string mutexName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertLockOrUnlock(thread->threadId, mutexName, item,
 						true);
 				item->mutexName = mutexName;
@@ -337,7 +372,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
-				string mutexName = createVarName(mo->id, param, isGlobalMO(mo));
+				string mutexName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertLockOrUnlock(thread->threadId, mutexName, item,
 						false);
 				item->mutexName = mutexName;
@@ -408,7 +443,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			//							if (success) {
 			//								const MemoryObject *mo = op.first;
 			//								name = createVarName(mo->id, address,
-			//										isGlobalMO(mo));
+			//										executor->isGlobalMO(mo));
 			//							} else {
 			//								assert(0 && "resolve param address failed");
 			//							}
@@ -585,7 +620,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				bool success = executor->getMemoryObject(op, state, address);
 				if (success) {
 					const MemoryObject *mo = op.first;
-					if (isGlobalMO(mo)) {
+					if (executor->isGlobalMO(mo)) {
 						item->isGlobal = true;
 //						if(mo->isArg){
 //							item->isArg = 1;
@@ -656,7 +691,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			bool success = executor->getMemoryObject(op, state, address);
 			if (success) {
 				const MemoryObject *mo = op.first;
-				if (isGlobalMO(mo)) {
+				if (executor->isGlobalMO(mo)) {
 					item->isGlobal = true;
 				} else {
 					item->isLocal = true;
@@ -737,9 +772,9 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	lastEvent = item;
 }
 
-/**
- * 指令调用消息响应函数，在指令解释执行之后调用
- */
+
+//指令调用消息响应函数，在指令解释执行之后调用
+
 void PSOListener::instructionExecuted(ExecutionState &state, KInstruction *ki) {
 	if (lastEvent) {
 		Instruction* inst = ki->inst;
@@ -810,250 +845,64 @@ void PSOListener::instructionExecuted(ExecutionState &state, KInstruction *ki) {
 	}
 }
 
-/**
- * 消息响应函数，在被测程序解释执行之前调用
- */
-void PSOListener::beforeRunMethodAsMain(ExecutionState &initialState) {
-	//push main function's stackframe
-//	KFunction* kf = initialState.stack[0].kf;
-	//runtime.pushStackFrame(kf->function, kf->numRegisters, initialState.threadId);
 
-	//statics
-	gettimeofday(&start, NULL);
-	//收集全局变量初始化值
-//	Trace* trace = rdManager.createNewTrace(executor->executionNum);
-	Module* m = executor->kmodule->module;
-	for (Module::global_iterator i = m->global_begin(), e = m->global_end();
-			i != e; ++i) {
-		if (i->hasInitializer() && i->getName().str().at(0) != '.') {
-			MemoryObject *mo = executor->globalObjects.find(i)->second;
-			Constant* initializer = i->getInitializer();
-			uint64_t address = mo->address;
-//			cerr << i->getName().str() << " " << initializer->getType()->getTypeID() << endl;
-			handleInitializer(initializer, mo, address);
-		}
-	}
-	for (std::vector<KFunction*>::iterator i =
-			executor->kmodule->functions.begin(), e =
-			executor->kmodule->functions.end(); i != e; ++i) {
-		KInstruction **instructions = (*i)->instructions;
-		for (unsigned j = 0; j < (*i)->numInstructions; j++) {
-			KInstruction *ki = instructions[j];
-			Instruction* inst = ki->inst;
-//			instructions[j]->inst->dump();
-			if (inst->getOpcode() == Instruction::Call) {
-				CallSite cs(inst);
-				Value *fp = cs.getCalledValue();
-				Function *f = executor->getTargetFunction(fp, initialState);
-				if (f && f->getName().str() == "__assert_fail") {
-					string fileName = ki->info->file;
-					unsigned line = ki->info->line;
-					assertMap[fileName].push_back(line);
-//					printf("fileName : %s, line : %d\n",fileName.c_str(),line);
-//					std::cerr << "call name : " << f->getName().str() << "\n";
-				}
-			}
-		}
-	}
-	//获取argc，argv
-//	StackFrame sf = initialState.currentThread->stack.back();
-//	Function* main = sf.kf->function;
-//	Function::arg_iterator ai = main->arg_begin(), ae = main->arg_end();
-//	if (ai != ae) {
-//		// handle argc
-//		ref<Expr> value = sf.locals[0].value;
-//		ConstantExpr* cexpr = dyn_cast < ConstantExpr > (value);
-//		uint64_t argc = cexpr->getZExtValue();
-////		trace->insertArgc(argc);
-//		//ConstantInt* ci = ConstantInt::get(type, argc, true);
-//		if (++ai != ae) {
-//			//handle argv  ignore env
-//			value = sf.locals[1].value;
-//			cexpr = dyn_cast < ConstantExpr > (value);
-//			ObjectPair op;
-//			executor->getMemoryObject(op, initialState, cexpr);
-//			const MemoryObject* mo = op.first;
-//			const ObjectState* os = op.second;
-//			unsigned ptrBytes = Context::get().getPointerWidth() / 8;
-//			IntegerType* chTy =
-//					dyn_cast < IntegerType
-//							> (ai->getType()->getPointerElementType()->getPointerElementType());
-//			for (unsigned i = 0; i < argc; i++) {
-//				uint64_t address = mo->address + i * ptrBytes;
-//				ref<Expr> offset = mo->getOffsetExpr(
-//						ConstantExpr::create(address,
-//								Context::get().getPointerWidth()));
-//				ref<Expr> result = os->read(offset,
-//						Context::get().getPointerWidth());
-//				cexpr = dyn_cast < ConstantExpr > (result.get());
-//				ObjectPair arg;
-//				executor->getMemoryObject(arg, initialState, cexpr);
-//				const MemoryObject* argMo = arg.first;
-//				const ObjectState* argOs = arg.second;
-//				for (unsigned j = 0; j < argMo->size; j++) {
-//					ref<Expr> ch = argOs->read(j, 8);
-//					cexpr = dyn_cast < ConstantExpr > (ch.get());
-//					string name = createVarName(argMo->id, argMo->address + j,
-//							isGlobalMO(argMo));
-//					ConstantInt* ci = ConstantInt::get(chTy,
-//							cexpr->getZExtValue(), true);
-//					trace->insertGlobalVariableInitializer(name, ci);
-//				}
-//
-//			}
-//		}
-//	}
 
-	//
-	unsigned traceNum = executor->executionNum;
-	cerr << endl;
-	cerr
-			<< "************************************************************************\n";
-	cerr << "第" << traceNum << "次执行,路径文件为trace" << traceNum << ".txt";
-	if (traceNum == 0) {
-		cerr << " 初始执行" << endl;
-	} else {
-		cerr << " 前缀执行,前缀文件为prefix" << executor->prefix->getName() << ".txt"
-				<< endl;
-	}
-	cerr
-			<< "************************************************************************\n";
-	cerr << endl;
-#if PRINT_RUNTIMEINFO
-	printPrefix();
-#endif
-}
 
-/**
- * 消息响应函数，在被测程序解释执行之后调用
- */
+
+//消息响应函数，在被测程序解释执行之后调用
 void PSOListener::afterRunMethodAsMain() {
 	//TODO: Add Encoding Feature
-	//statics
 	Trace* trace = rdManager->getCurrentTrace();
 	unsigned allGlobal = 0;
-	unsigned brGlobal = 0;
-	gettimeofday(&finish, NULL);
-	double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
-			- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-	rdManager->runningCost += cost;
-	gettimeofday(&start, NULL);
-	if (executor->isSymbolicRun == 0) {
-		if (executor->execStatus != Executor::SUCCESS) {
-			cerr << "######################执行有错误,放弃本次执行####################\n";
-//			assert(0 && "debug");
-
-			//		if (rdManager.getCurrentTrace()->traceType == Trace::FAILED) {
-			//			cerr
-			//					<< "######################错误来自于前缀#############################\n";
-			//		} else {
-			//			cerr
-			//					<< "######################错误来自于执行#############################\n";
-			//		}
-		} else if (!rdManager->isCurrentTraceUntested()) {
-			rdManager->getCurrentTrace()->traceType = Trace::REDUNDANT;
-			cerr << "######################本条路径为旧路径####################\n";
-			getNewPrefix();
-		} else {
-			executor->isSymbolicRun = 1;
-			std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
-			std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
-			for (std::map<std::string, std::vector<Event *> >::iterator nit =
-					readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
-				allGlobal += nit->second.size();
-			}
-			for (std::map<std::string, std::vector<Event *> >::iterator nit =
-					writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
-				std::string varName = nit->first;
-				if (trace->readSet.find(varName) == trace->readSet.end()) {
-					allGlobal += nit->second.size();
-				}
-			}
-			rdManager->allGlobal += allGlobal;
-		}
-	} else if (executor->isSymbolicRun == 1) {
-		rdManager->getCurrentTrace()->traceType = Trace::UNIQUE;
+	if (executor->execStatus != Executor::SUCCESS) {
+		cerr << "######################执行有错误,放弃本次执行####################\n";
+		//		if (rdManager.getCurrentTrace()->traceType == Trace::FAILED) {
+		//			cerr
+		//					<< "######################错误来自于前缀#############################\n";
+		//		} else {
+		//			cerr
+		//					<< "######################错误来自于执行#############################\n";
+		//		}
+	} else if (!rdManager->isCurrentTraceUntested()) {
+		rdManager->getCurrentTrace()->traceType = Trace::REDUNDANT;
+		cerr << "######################本条路径为旧路径####################\n";
+		executor->getNewPrefix();
+	} else {
+		rdManager->runState = 1;
 		std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
 		std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
 		for (std::map<std::string, std::vector<Event *> >::iterator nit =
 				readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
-			brGlobal += nit->second.size();
+			allGlobal += nit->second.size();
 		}
 		for (std::map<std::string, std::vector<Event *> >::iterator nit =
 				writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
 			std::string varName = nit->first;
 			if (trace->readSet.find(varName) == trace->readSet.end()) {
-				brGlobal += nit->second.size();
+				allGlobal += nit->second.size();
 			}
 		}
-		rdManager->brGlobal += brGlobal;
-		cerr << "######################本条路径为新路径####################\n";
-		context ctx;
-		solver s(ctx);
-		Encode encode(rdManager, ctx, s);
-		encode.buildAllFormula();
-#if EVENTS_DEBUG
-		//true: output to file; false: output to terminal
-		rdManager.printCurrentTrace(true);
-		//			encode.showInitTrace();//need to be modified
-#endif
-		if (encode.verify()) {
-			encode.check_if();
-		}
-		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
-				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-		rdManager->solvingCost += cost;
-		getNewPrefix();
+		rdManager->allGlobal += allGlobal;
 	}
 
-#if PRINT_RUNTIMEINFO
-	//移动trace文件到对应的文件夹
-	string fileName = cwd + "/trace"
-	+ Transfer::uint64toString(rdManager.getCurrentTrace()->Id)
-	+ ".txt";
-	string command;
-	command.append(moveShellPos);
-	command.append(" ");
-	command.append(fileName);
-	command.append(" ");
-	switch (rdManager.getCurrentTrace()->traceType) {
-		case Trace::FAILED: {
-			command.append(failedTraceDir);
-			break;
-		}
-
-		case Trace::REDUNDANT: {
-			command.append(redundantTraceDir);
-			break;
-		}
-
-		case Trace::UNIQUE: {
-			command.append(uniqueTraceDir);
-			break;
-		}
-
-	}
-
-	int ret = system(command.c_str());
-	assert(WIFEXITED(ret) != 0 && "move failed");
-//	rdManager.printAllPrefix(cerr);
-#endif
-
-//	unsigned mbs = 0;
-//	  	struct mallinfo mi = ::mallinfo();
-//	  	#if defined(__GLIBC__)
-//	  	mbs = mi.uordblks + mi.hblkhd;
-//	  	#else
-//	  	mbs = mi.uordblks;
-//	  	#endif
-//	//  	mbs = mbs >> 20;
-//	  	cout << "Memory cost: " << mbs << "\n5555555555555555555555555\n";
 }
 
-/**
- * 处理全局函数初始值
- */
+
+//消息相应函数，在前缀执行出错之后程序推出之前调用
+void PSOListener::executionFailed(ExecutionState &state, KInstruction *ki) {
+	rdManager->getCurrentTrace()->traceType = Trace::FAILED;
+}
+
+
+//消息相应函数，在创建了新线程之后调用
+void PSOListener::createThread(ExecutionState &state, Thread* thread) {
+	Trace* trace = rdManager->getCurrentTrace();
+	trace->insertThreadCreateOrJoin(make_pair(lastEvent, thread->threadId),
+			true);
+}
+
+
+//处理全局函数初始值
 void PSOListener::handleInitializer(Constant* initializer, MemoryObject* mo,
 		uint64_t& startAddress) {
 	Trace* trace = rdManager->getCurrentTrace();
@@ -1065,11 +914,10 @@ void PSOListener::handleInitializer(Constant* initializer, MemoryObject* mo,
 			startAddress = (startAddress / alignment + 1) * alignment;
 		}
 		string globalVariableName = createVarName(mo->id, startAddress,
-				isGlobalMO(mo));
+				executor->isGlobalMO(mo));
 		trace->insertGlobalVariableInitializer(globalVariableName, initializer);
 //		cerr << "globalVariableName : " << globalVariableName << "    value : "
 //				<< executor->evalConstant(initializer) << "\n";
-		symbolicMap[globalVariableName] = executor->evalConstant(initializer);
 		//startAddress += TypeUtils::getPrimitiveTypeWidth(type);
 		startAddress += executor->kmodule->targetData->getTypeSizeInBits(type)
 				/ 8;
@@ -1080,11 +928,10 @@ void PSOListener::handleInitializer(Constant* initializer, MemoryObject* mo,
 			startAddress = (startAddress / alignment + 1) * alignment;
 		}
 		string globalVariableName = createVarName(mo->id, startAddress,
-				isGlobalMO(mo));
+				executor->isGlobalMO(mo));
 		trace->insertGlobalVariableInitializer(globalVariableName, initializer);
 //		cerr << "globalVariableName : " << globalVariableName << "    value : "
 //				<< executor->evalConstant(initializer) << "\n";
-		symbolicMap[globalVariableName] = executor->evalConstant(initializer);
 		//startAddress += TypeUtils::getPrimitiveTypeWidth(type);
 		startAddress += executor->kmodule->targetData->getTypeSizeInBits(type)
 				/ 8;
@@ -1195,9 +1042,8 @@ void PSOListener::handleInitializer(Constant* initializer, MemoryObject* mo,
 		assert(0 && "unsupported initializer");
 	}
 }
-/**
- * 处理LLVM::ConstantExpr类型
- */
+
+//处理LLVM::ConstantExpr类型
 void PSOListener::handleConstantExpr(llvm::ConstantExpr* expr) {
 	switch (expr->getOpcode()) {
 
@@ -1218,9 +1064,8 @@ void PSOListener::handleConstantExpr(llvm::ConstantExpr* expr) {
 	}
 }
 
-/**
- * 向全局变量表插入全局变量
- */
+
+//向全局变量表插入全局变量
 void PSOListener::insertGlobalVariable(ref<Expr> address, Type* type) {
 	ConstantExpr* realAddress = dyn_cast<ConstantExpr>(address.get());
 	uint64_t key = realAddress->getZExtValue();
@@ -1230,12 +1075,7 @@ void PSOListener::insertGlobalVariable(ref<Expr> address, Type* type) {
 	}
 }
 
-/**
- * 根据Type，在MemoryObject中提取address对应的内存单元，存储成Expr对象
- */
-/**
- * 获取外部函数的返回值,必须在Call指令解释执行之后调用
- */
+//获取外部函数的返回值,必须在Call指令解释执行之后调用
 Constant * PSOListener::handleFunctionReturnValue(ExecutionState & state,
 		KInstruction * ki) {
 	Instruction* inst = ki->inst;
@@ -1261,9 +1101,8 @@ Constant * PSOListener::handleFunctionReturnValue(ExecutionState & state,
 	return result;
 }
 
-/**
- * 获取某些对指针参数指向空间进行写操作的外部函数的输入参数,必须在Call指令解释执行之后调用
- */
+
+//获取某些对指针参数指向空间进行写操作的外部函数的输入参数,必须在Call指令解释执行之后调用
 void PSOListener::handleExternalFunction(ExecutionState& state,
 		KInstruction *ki) {
 	Trace* trace = rdManager->getCurrentTrace();
@@ -1281,7 +1120,7 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 //
 //		ConstantExpr *caddress = cast<ConstantExpr>(scrAddress);
 //		uint64_t scraddress = caddress->getZExtValue();
-//		std::cerr << "dest" <<isGlobalMO(scrmo)<< std::endl;
+//		std::cerr << "dest" <<executor->isGlobalMO(scrmo)<< std::endl;
 //		for (unsigned i = 0; i < scrmo->size; i++) {
 //			std::cerr << "dest" << std::endl;
 //			ref<Expr> ch = scros->read(i, 8);
@@ -1289,8 +1128,8 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 //					Type::getInt8Ty(inst->getContext()));
 //			ConstantExpr* cexpr = dyn_cast<ConstantExpr>(ch.get());
 //			string name = createVarName(scrmo->id, scraddress + i,
-//					isGlobalMO(scrmo));
-//			if (isGlobalMO(scrmo)) {
+//					executor->isGlobalMO(scrmo));
+//			if (executor->isGlobalMO(scrmo)) {
 //				unsigned loadTime = getLoadTime(scraddress + i);
 //				trace->insertReadSet(name, lastEvent);
 //				name = createGlobalVarFullName(name, loadTime, false);
@@ -1316,8 +1155,8 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 			ref<Expr> ch = destos->read(i, 8);
 			ConstantExpr* cexpr = dyn_cast<ConstantExpr>(ch.get());
 			string name = createVarName(destmo->id, destaddress + i,
-					isGlobalMO(destmo));
-			if (isGlobalMO(destmo)) {
+					executor->isGlobalMO(destmo));
+			if (executor->isGlobalMO(destmo)) {
 				unsigned storeTime = getStoreTime(destaddress + i);
 				trace->insertWriteSet(name, lastEvent);
 
@@ -1362,9 +1201,8 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 
 }
 
-/**
- * 解析一个MemoryObject，差分成每一个基本类型（Consant*）。对于指针不展开
- */
+
+//解析一个MemoryObject，差分成每一个基本类型（Consant*）。对于指针不展开
 void PSOListener::analyzeInputValue(uint64_t& address, ObjectPair& op,
 		Type* type) {
 	Trace* trace = rdManager->getCurrentTrace();
@@ -1388,11 +1226,11 @@ void PSOListener::analyzeInputValue(uint64_t& address, ObjectPair& op,
 		}
 		ref<Expr> value = os->read(address - mo->address,
 				type->getPrimitiveSizeInBits());
-		string variableName = createVarName(mo->id, address, isGlobalMO(mo));
+		string variableName = createVarName(mo->id, address, executor->isGlobalMO(mo));
 		map<uint64_t, unsigned>::iterator index = storeRecord.find(address);
 		unsigned storeTime = getStoreTime(address);
 		address += type->getPrimitiveSizeInBits() / 8;
-		if (isGlobalMO(mo)) {
+		if (executor->isGlobalMO(mo)) {
 			trace->insertWriteSet(variableName, lastEvent);
 			variableName = createGlobalVarFullName(variableName, storeTime,
 					true);
@@ -1443,9 +1281,8 @@ void PSOListener::analyzeInputValue(uint64_t& address, ObjectPair& op,
 	}
 }
 
-/**
- * 计算全局变量的读操作次数
- */
+
+//计算全局变量的读操作次数
 unsigned PSOListener::getLoadTime(uint64_t address) {
 	unsigned loadTime;
 	map<uint64_t, unsigned>::iterator index = loadRecord.find(address);
@@ -1459,9 +1296,8 @@ unsigned PSOListener::getLoadTime(uint64_t address) {
 	return loadTime;
 }
 
-/**
- * 计算全局变量的写操作次数
- */
+
+//计算全局变量的写操作次数
 unsigned PSOListener::getStoreTime(uint64_t address) {
 	unsigned storeTime;
 	map<uint64_t, unsigned>::iterator index = storeRecord.find(address);
@@ -1475,9 +1311,8 @@ unsigned PSOListener::getStoreTime(uint64_t address) {
 	return storeTime;
 }
 
-/**
- * 获取函数指针指向的Function
- */
+
+//获取函数指针指向的Function
 Function * PSOListener::getPointeredFunction(ExecutionState & state,
 		KInstruction * ki) {
 	StackFrame* sf = &state.currentThread->stack.back();
@@ -1499,150 +1334,6 @@ Function * PSOListener::getPointeredFunction(ExecutionState & state,
 	ConstantExpr* addrExpr = dyn_cast<klee::ConstantExpr>(result);
 	uint64_t addr = addrExpr->getZExtValue();
 	return (Function*) addr;
-}
-
-/**
- * 消息相应函数，在初始化所有全局变量之后调用
- */
-void PSOListener::afterPreparation() {
-
-}
-
-/**
- * 消息相应函数，在创建了新线程之后调用
- */
-void PSOListener::createThread(ExecutionState &state, Thread* thread) {
-	Trace* trace = rdManager->getCurrentTrace();
-	trace->insertThreadCreateOrJoin(make_pair(lastEvent, thread->threadId),
-			true);
-}
-
-/**
- * 消息相应函数，在前缀执行出错之后程序推出之前调用
- */
-void PSOListener::executionFailed(ExecutionState &state, KInstruction *ki) {
-	rdManager->getCurrentTrace()->traceType = Trace::FAILED;
-}
-
-/**
- * 打印函数，用于打印执行的指令
- */
-void PSOListener::printInstrcution(ExecutionState& state, KInstruction* ki) {
-	string fileName = "trace"
-			+ Transfer::uint64toString(rdManager->getCurrentTrace()->Id)
-			+ ".txt";
-	string errorMsg;
-	raw_fd_ostream out(fileName.c_str(), errorMsg, raw_fd_ostream::F_Append);
-	//ostream& out = cerr;
-	Prefix* prefix = executor->prefix;
-	if (prefix && !isPrefixFinished && prefix->isFinished()) {
-		isPrefixFinished = true;
-		out << "prefix finished\n";
-	}
-	Instruction* inst = ki->inst;
-	if (MDNode *mdNode = inst->getMetadata("dbg")) { // Here I is an LLVM instruction
-		DILocation loc(mdNode); // DILocation is in DebugInfo.h
-		unsigned line = loc.getLineNumber();
-		string file = loc.getFilename().str();
-		string dir = loc.getDirectory().str();
-		out << "thread" << state.currentThread->threadId << " " << dir << "/"
-				<< file << " " << line << ": ";
-		inst->print(out);
-		//cerr << "thread" << state.currentThread->threadId << " " << dir << "/" << file << " " << line << ": " << inst->getOpcodeName() << endl;
-		switch (inst->getOpcode()) {
-		case Instruction::Call: {
-			CallSite cs(inst);
-			Value *fp = cs.getCalledValue();
-			Function *f = executor->getTargetFunction(fp, state);
-			if (!f) {
-				ref<Expr> expr =
-						executor->eval(ki, 0, state.currentThread).value;
-				ConstantExpr* constExpr = dyn_cast<ConstantExpr>(expr.get());
-				uint64_t functionPtr = constExpr->getZExtValue();
-				f = (Function*) functionPtr;
-			}
-			out << " " << f->getName().str();
-			if (f->getName().str() == "pthread_mutex_lock") {
-				ref<Expr> param =
-						executor->eval(ki, 1, state.currentThread).value;
-				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
-				out << " " << cexpr->getZExtValue();
-			} else if (f->getName().str() == "pthread_mutex_unlock") {
-				ref<Expr> param =
-						executor->eval(ki, 1, state.currentThread).value;
-				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
-				out << " " << cexpr->getZExtValue();
-			} else if (f->getName().str() == "pthread_cond_wait") {
-				//get lock
-				ref<Expr> param =
-						executor->eval(ki, 2, state.currentThread).value;
-				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
-				out << " " << cexpr->getZExtValue();
-				//get cond
-				param = executor->eval(ki, 1, state.currentThread).value;
-				cexpr = dyn_cast<ConstantExpr>(param);
-				out << " " << cexpr->getZExtValue();
-			} else if (f->getName().str() == "pthread_cond_signal") {
-				ref<Expr> param =
-						executor->eval(ki, 1, state.currentThread).value;
-				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
-				out << " " << cexpr->getZExtValue();
-			} else if (f->getName().str() == "pthread_cond_broadcast") {
-				ref<Expr> param =
-						executor->eval(ki, 1, state.currentThread).value;
-				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
-				out << " " << cexpr->getZExtValue();
-			}
-			break;
-		}
-
-		}
-		out << '\n';
-	} else {
-		out << "thread" << state.currentThread->threadId << " klee/internal 0: "
-				<< inst->getOpcodeName() << '\n';
-	}
-
-	out.close();
-	if (prefix && prefix->current() + 1 == prefix->end()) {
-		inst->print(errs());
-		Event* event = *prefix->current();
-		ref<Expr> param = executor->eval(ki, 0, state.currentThread).value;
-		ConstantExpr* condition = dyn_cast<ConstantExpr>(param);
-		if (condition->getAPValue().getBoolValue() != event->condition) {
-			cerr << "\n前缀已被取反\n";
-		} else {
-			cerr << "\n前缀未被取反\n";
-		}
-	}
-}
-
-void PSOListener::printPrefix() {
-	if (executor->prefix) {
-		string fileName = executor->prefix->getName() + ".txt";
-		string errorMsg;
-		raw_fd_ostream out(fileName.c_str(), errorMsg,
-				raw_fd_ostream::F_Append);
-		executor->prefix->print(out);
-		out.close();
-		//prefix->print(cerr);
-	}
-}
-
-void PSOListener::getNewPrefix() {
-	//获取新的前缀
-	Prefix* prefix = rdManager->getNextPrefix();
-	//Prefix* prefix = NULL;
-	if (prefix) {
-		delete executor->prefix;
-		executor->prefix = prefix;
-		executor->isFinished = false;
-	} else {
-		executor->isFinished = true;
-#if PRINT_RUNTIMEINFO
-		rdManager.printAllTrace(cerr);
-#endif
-	}
 }
 
 }

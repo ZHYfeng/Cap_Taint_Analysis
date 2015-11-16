@@ -10,17 +10,25 @@
 
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/ExecutionState.h"
-#include "../Core/Mutex.h"
-#include "../Core/Condition.h"
-#include "../Core/Thread.h"
+#include "Mutex.h"
+#include "Condition.h"
+#include "Thread.h"
 
 namespace klee {
 
 class BitcodeListener {
 public:
+
+	enum listenerKind {
+		PSOListenerKind,
+		SymbolicListenerKind,
+		DebugerListenerKind
+	};
+
+	listenerKind Kind;
+
 	virtual ~BitcodeListener();
 	virtual void beforeRunMethodAsMain(ExecutionState &initialState) = 0;
-	virtual void afterPreparation() = 0;
 	virtual void executeInstruction(ExecutionState &state, KInstruction *ki) = 0;
 	virtual void instructionExecuted(ExecutionState &state, KInstruction *ki) = 0;
 	virtual void afterRunMethodAsMain() = 0;

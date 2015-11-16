@@ -105,12 +105,12 @@ ObjectState::ObjectState(const MemoryObject *mo)
     object(mo),
     concreteStore(new uint8_t[mo->size]),
     concreteMask(0),
-    isFloat(false),
 	flushMask(0),
     knownSymbolics(0),
     updates(0, 0),
     size(mo->size),
-    readOnly(false) {
+    readOnly(false),
+	isFloat(false) {
   mo->refCount++;
   if (!UseConstantArrays) {
     // FIXME: Leaked.

@@ -30,6 +30,9 @@ CondScheduler* getCondSchedulerByType(CondScheduler::CondSchedulerType type) {
 		//scheduler = new RandomCondScheduler();
 		break;
 	}
+	default: {
+		scheduler = new FIFSCondScheduler();
+	}
 
 	}
 	return scheduler;

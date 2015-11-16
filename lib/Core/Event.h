@@ -71,8 +71,8 @@ public:
 	bool isConditionIns; // is this event associated with a Br which has two targets
 	bool condition; // Br's condition
 	bool isFunctionWithSourceCode; // only use by call, whether the called function is defined by user
-	llvm::Function* calledFunction; //set for called function. all callinst use it.@14.12.02
 	VectorInfo* vectorInfo; // element address of accessed array
+	llvm::Function* calledFunction; //set for called function. all callinst use it.@14.12.02
 	std::vector<std::string> implicitGlobalVar; // function's input variable
 	std::string mutexName; // access mutex
 	std::string condName; //access condition;

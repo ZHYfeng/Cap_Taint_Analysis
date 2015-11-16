@@ -5,9 +5,9 @@
  *      Author: ylc
  */
 
-#include "../Core/RuntimeDataManager.h"
+#include "RuntimeDataManager.h"
 
-#include "../Core/Transfer.h"
+#include "Transfer.h"
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Constants.h"
 #include "llvm/Support/raw_ostream.h"
@@ -35,6 +35,7 @@ RuntimeDataManager::RuntimeDataManager() :
 	runningCost = 0.0;
 	satCost = 0.0;
 	unSatCost = 0.0;
+	runState = 0;
 }
 
 RuntimeDataManager::~RuntimeDataManager() {
@@ -43,6 +44,7 @@ RuntimeDataManager::~RuntimeDataManager() {
 			ti != te; ti++) {
 		delete *ti;
 	}
+	cerr << "~RuntimeDataManager\n";
 	string ErrorInfo;
 	raw_fd_ostream out_to_file("./output_info/statics.txt", ErrorInfo, 0x0202);
 	stringstream ss;
@@ -51,13 +53,26 @@ RuntimeDataManager::~RuntimeDataManager() {
 	ss << "TotalNewPath:" << testedTraceList.size() << "\n";
 	ss << "TotalOldPath:" << traceList.size() - testedTraceList.size() << "\n";
 	ss << "TotalPath:" << traceList.size() << "\n";
-	ss << "allGlobal:" << allGlobal * 1.0 / testedTraceList.size() << "\n";
-	ss << "brGlobal:" << brGlobal * 1.0 / testedTraceList.size()<< "\n";
+	if (testedTraceList.size()) {
+		ss << "allGlobal:" << allGlobal * 1.0 / testedTraceList.size() << "\n";
+		ss << "brGlobal:" << brGlobal * 1.0 / testedTraceList.size() << "\n";
+	} else {
+		ss << "allGlobal:0" << "\n";
+		ss << "brGlobal:0" << "\n";
+	}
 	ss << "AllBranch:" << satBranch + unSatBranch << "\n";
 	ss << "satBranch:" << satBranch << "\n";
-	ss << "satCost:" << satCost / satBranch << "\n";
+	if (satBranch) {
+		ss << "satCost:" << satCost / satBranch << "\n";
+	} else {
+		ss << "satCost:0" << "\n";
+	}
 	ss << "unSatBranch:" << unSatBranch << "\n";
-	ss << "unSatCost:" << unSatCost / unSatBranch << "\n";
+	if (unSatBranch) {
+		ss << "unSatCost:" << unSatCost / unSatBranch << "\n";
+	} else {
+		ss << "unSatCost:0" << "\n";
+	}
 	ss << "SolvingCost:" << solvingCost << "\n";
 	ss << "RunningCost:" << runningCost << "\n";
 	out_to_file << ss.str();

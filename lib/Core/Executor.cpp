@@ -8,10 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "Common.h"
-
 #include "Executor.h"
-
-#include "PSOListener.h"
+#include "ListenerService.h"
 #include "Context.h"
 #include "CoreStats.h"
 #include "ExternalDispatcher.h"
@@ -49,8 +47,8 @@
 #include "klee/Internal/System/Time.h"
 #include "klee/Internal/System/MemoryUsage.h"
 
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Function.h"
+#include "llvm/DebugInfo.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -62,29 +60,13 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/TypeBuilder.h"
 #include "llvm/IR/DerivedTypes.h"
-#else
-#include "llvm/Attributes.h"
-#include "llvm/BasicBlock.h"
-#include "llvm/Constants.h"
-#include "llvm/Function.h"
-#include "llvm/Instructions.h"
-#include "llvm/IntrinsicInst.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/Module.h"
-#include "llvm/DerivedTypes.h"
-#if LLVM_VERSION_CODE <= LLVM_VERSION(3, 1)
-#include "llvm/Target/TargetData.h"
-#else
-#include "llvm/DataLayout.h"
-#include "llvm/TypeBuilder.h"
-#endif
-#endif
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Process.h"
+
 #include <cassert>
 #include <algorithm>
 #include <iostream>
@@ -93,9 +75,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
-
 #include <sys/mman.h>
-
 #include <errno.h>
 #include <cxxabi.h>
 
@@ -104,6 +84,7 @@ using namespace llvm;
 using namespace klee;
 
 #define CONSTANT 0
+#define PRINT_RUNTIMEINFO 0
 
 #ifdef SUPPORT_METASMT
 
@@ -237,20 +218,35 @@ RNG theRNG;
 bool Executor::hasInitialized = false;
 
 Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
-		kmodule(0), interpreterHandler(ih), searcher(0), externalDispatcher(
-				new ExternalDispatcher()), Interpreter(opts), statsTracker(0), pathWriter(
-				0), symPathWriter(0), specialFunctionHandler(0),
+		kmodule(0),
+		interpreterHandler(ih),
+		searcher(0),
+		externalDispatcher(new ExternalDispatcher()),
+		Interpreter(opts),
+		statsTracker(0),
+		pathWriter(0),
+		symPathWriter(0),
+		specialFunctionHandler(0),
 		//processTree(0),
-		replayOut(0), replayPath(0), usingSeeds(0), atMemoryLimit(false), inhibitForking(
-				false), haltExecution(false), ivcEnabled(false), coreSolverTimeout(
-				MaxCoreSolverTime != 0 && MaxInstructionTime != 0 ?
+		replayOut(0),
+		replayPath(0),
+		usingSeeds(0),
+		atMemoryLimit(false),
+		inhibitForking(false),
+		haltExecution(false),
+		ivcEnabled(false),
+		coreSolverTimeout(MaxCoreSolverTime != 0 && MaxInstructionTime != 0 ?
 						std::min(MaxCoreSolverTime, MaxInstructionTime) :
 						std::max(MaxCoreSolverTime, MaxInstructionTime)),
 		//ptreeVector(20),
-		mutexManager(), condManager(), isFinished(false), prefix(NULL), isSymbolicRun(
-				false),
+		mutexManager(),
+		condManager(),
+		isFinished(false),
+		isPrefixFinished(false),
+		prefix(NULL),
 		//isExecutionSuccess(true),
-		executionNum(0), execStatus(SUCCESS) {
+		executionNum(0),
+		execStatus(SUCCESS) {
 	if (coreSolverTimeout)
 		UseForkedCoreSolver = true;
 	condManager.setMutexManager(&mutexManager);
@@ -299,13 +295,8 @@ Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
 	this->solver = new TimingSolver(solver);
 
 	memory = new MemoryManager();
-	BitcodeListener* listener;
-#if EXECUTOR_DEBUG
-	listener = new TestListener(this);
-	bitcodeListeners.push_back(listener);
-#endif
-	listener = new PSOListener(this);
-	bitcodeListeners.push_back(listener);
+
+	listenerService = new ListenerService();
 
 //  listener = new SymbolicListener(this);
 //  bitcodeListeners.push_back(listener);
@@ -342,10 +333,8 @@ const Module *Executor::setModule(llvm::Module *module,
 }
 
 Executor::~Executor() {
-	for (std::vector<BitcodeListener*>::iterator bit = bitcodeListeners.begin(),
-			bie = bitcodeListeners.end(); bit != bie; ++bit) {
-		delete (*bit);
-	}
+
+	delete listenerService;
 	delete memory;
 	delete externalDispatcher;
 //  if (processTree)
@@ -1107,6 +1096,20 @@ bool Executor::getMemoryObject(ObjectPair& op, ExecutionState& state,
 				op);
 	}
 	return success;
+}
+
+bool Executor::isGlobalMO(const MemoryObject* mo) {
+	bool result;
+	if (mo->isGlobal) {
+		result = true;
+	} else {
+		if (mo->isLocal) {
+			result = false;
+		} else {
+			result = true;
+		}
+	}
+	return result;
 }
 
 void Executor::bindLocal(KInstruction *target, Thread *thread,
@@ -2971,24 +2974,10 @@ void Executor::run(ExecutionState &initialState) {
 
 	searcher->update(0, states, std::set<ExecutionState*>());
 
-	if (!isSymbolicRun) {
-		for (std::vector<BitcodeListener*>::iterator bit =
-				bitcodeListeners.begin(), bie = bitcodeListeners.end();
-				bit != bie; ++bit) {
-			(*bit)->beforeRunMethodAsMain(initialState);
-		}
-	}
+	listenerService->beforeRunMethodAsMain(initialState);
 
 	//insert global mutex ,condition and barrier
 	handleInitializers(initialState);
-
-	if (!isSymbolicRun) {
-		for (std::vector<BitcodeListener*>::iterator bit =
-				bitcodeListeners.begin(), bie = bitcodeListeners.end();
-				bit != bie; ++bit) {
-			(*bit)->afterPreparation();
-		}
-	}
 
 	while (!states.empty() && !haltExecution) {
 		ExecutionState &state = searcher->selectState();
@@ -3055,11 +3044,7 @@ void Executor::run(ExecutionState &initialState) {
 		if (!isAbleToRun) {
 			//isExecutionSuccess = false;
 			execStatus = RUNTIMEERROR;
-			for (std::vector<BitcodeListener*>::iterator bit =
-					bitcodeListeners.begin(), bie = bitcodeListeners.end();
-					bit != bie; ++bit) {
-				(*bit)->executionFailed(state, state.currentThread->pc);
-			}
+			listenerService->executionFailed(state, state.currentThread->pc);
 			cerr << "thread unable to run, Id: " << thread->threadId
 					<< " state: " << thread->threadState << endl;
 			terminateState(state);
@@ -3096,24 +3081,13 @@ void Executor::run(ExecutionState &initialState) {
 		}
 
 		stepInstruction(state);
-		if (!isSymbolicRun) {
-			for (std::vector<BitcodeListener*>::iterator bit =
-					bitcodeListeners.begin(), bie = bitcodeListeners.end();
-					bit != bie; ++bit) {
-				(*bit)->executeInstruction(state, ki);
 
-			}
-		}
+		listenerService->executeInstruction(state, ki);
 
 		executeInstruction(state, ki);
 
-		if (!isSymbolicRun) {
-			for (std::vector<BitcodeListener*>::iterator bit =
-					bitcodeListeners.begin(), bie = bitcodeListeners.end();
-					bit != bie; ++bit) {
-				(*bit)->instructionExecuted(state, ki);
-			}
-		}
+		listenerService->instructionExecuted(state, ki);
+
 		if (prefix) {
 			prefix->increase();
 		}
@@ -3178,15 +3152,9 @@ void Executor::run(ExecutionState &initialState) {
 	delete searcher;
 	searcher = 0;
 
-	if (1) {
-		for (std::vector<BitcodeListener*>::iterator bit =
-				bitcodeListeners.begin(), bie = bitcodeListeners.end();
-				bit != bie; ++bit) {
-			(*bit)->afterRunMethodAsMain();
-		}
-	}
+	listenerService->afterRunMethodAsMain();
 
-	dump: if (DumpStatesOnHalt && !states.empty()) {
+	if (DumpStatesOnHalt && !states.empty()) {
 		std::cerr << "KLEE: halting execution, dumping remaining states\n";
 		for (std::set<ExecutionState*>::iterator it = states.begin(), ie =
 				states.end(); it != ie; ++it) {
@@ -3386,10 +3354,7 @@ void Executor::terminateStateOnError(ExecutionState &state,
 	terminateState(state);
 	cerr << "encounter runtime error\n";
 	execStatus = RUNTIMEERROR;
-	for (std::vector<BitcodeListener*>::iterator bit = bitcodeListeners.begin(),
-			bie = bitcodeListeners.end(); bit != bie; ++bit) {
-		(*bit)->executionFailed(state, state.currentThread->pc);
-	}
+	listenerService->executionFailed(state, state.currentThread->pc);
 	//assert(0 && "encounter runtime error");
 }
 
@@ -4218,13 +4183,8 @@ unsigned Executor::executePThreadCreate(ExecutionState &state, KInstruction *ki,
 		executeMemoryOperation(state, true, pidAddress,
 				ConstantExpr::create(newThread->threadId,
 						elementType->getBitWidth()), 0);
-		if (!isSymbolicRun) {
-			for (std::vector<BitcodeListener*>::iterator bit =
-					bitcodeListeners.begin(), bie = bitcodeListeners.end();
-					bit != bie; ++bit) {
-				(*bit)->createThread(state, newThread);
-			}
-		}
+		listenerService->createThread(state, newThread);
+
 	} else {
 		assert(0 && "inst must be callInst!");
 	}
@@ -4659,54 +4619,137 @@ void Executor::createSpecialElement(ExecutionState& state, Type* type,
 //}
 void Executor::runVerification(llvm::Function *f, int argc, char **argv,
 		char **envp) {
-	//first run
-//	runFunctionAsMain(f, argc, argv, envp);
-//	prepareNextExecution();
-	//second run
-//	runFunctionAsMain(f, argc, argv, envp);
-//	prepareNextExecution();
 	while (!isFinished && execStatus != RUNTIMEERROR) {
 		execStatus = SUCCESS;
+		listenerService->startControl(this);
 		runFunctionAsMain(f, argc, argv, envp);
-		if (isSymbolicRun) {
-			prepareSymbolicExecution();
-			runFunctionAsMain(f, argc, argv, envp);
-		}
+		listenerService->endControl(this);
 		prepareNextExecution();
 	}
 }
 
-void Executor::prepareSymbolicExecution() {
+void Executor::prepareNextExecution() {
 	mutexManager.clear();
 	condManager.clear();
 	barrierManager.clear();
 	joinRecord.clear();
 	Thread::nextThreadId = 1;
-	if (prefix) {
-		prefix->reuse();
-	}
 	for (std::set<ExecutionState*>::const_iterator it = states.begin(), ie =
 			states.end(); it != ie; ++it) {
 		delete *it;
 	}
-	cerr << "符号执行" << std::endl;
 }
 
-void Executor::prepareNextExecution() {
-#if EXECUTOR_DEBUG
-	mutexManager.print(cerr);
-	condManager.print(cerr);
-	barrierManager.print(cerr);
+void Executor::getNewPrefix() {
+	//获取新的前缀
+	Prefix* prefix = listenerService->getRuntimeDataManager()->getNextPrefix();
+	//Prefix* prefix = NULL;
+	if (prefix) {
+		delete this->prefix;
+		this->prefix = prefix;
+		isFinished = false;
+	} else {
+		isFinished = true;
+#if PRINT_RUNTIMEINFO
+		printPrefix();
 #endif
-	isSymbolicRun = 0;
-	mutexManager.clear();
-	condManager.clear();
-	barrierManager.clear();
-	joinRecord.clear();
-	Thread::nextThreadId = 1;
-	executionNum++;
-	for (std::set<ExecutionState*>::const_iterator it = states.begin(), ie =
-			states.end(); it != ie; ++it) {
-		delete *it;
+	}
+}
+
+/**
+ * 打印函数，用于打印执行的指令
+ */
+void Executor::printInstrcution(ExecutionState &state, KInstruction* ki) {
+	string fileName = "trace"
+			+ Transfer::uint64toString(listenerService->getRuntimeDataManager()->getCurrentTrace()->Id)
+			+ ".txt";
+	string errorMsg;
+	raw_fd_ostream out(fileName.c_str(), errorMsg, raw_fd_ostream::F_Append);
+	//ostream& out = cerr;
+	if (prefix && !isPrefixFinished && prefix->isFinished()) {
+		isPrefixFinished = true;
+		out << "prefix finished\n";
+	}
+	Instruction* inst = ki->inst;
+	if (MDNode *mdNode = inst->getMetadata("dbg")) { // Here I is an LLVM instruction
+		DILocation loc(mdNode); // DILocation is in DebugInfo.h
+		unsigned line = loc.getLineNumber();
+		string file = loc.getFilename().str();
+		string dir = loc.getDirectory().str();
+		out << "thread" << state.currentThread->threadId << " " << dir << "/"
+				<< file << " " << line << ": ";
+		inst->print(out);
+		//cerr << "thread" << state.currentThread->threadId << " " << dir << "/" << file << " " << line << ": " << inst->getOpcodeName() << endl;
+		switch (inst->getOpcode()) {
+		case Instruction::Call: {
+			CallSite cs(inst);
+			Value *fp = cs.getCalledValue();
+			Function *f = getTargetFunction(fp, state);
+			if (!f) {
+				ref<Expr> expr = eval(ki, 0, state.currentThread).value;
+				ConstantExpr* constExpr = dyn_cast<ConstantExpr>(expr.get());
+				uint64_t functionPtr = constExpr->getZExtValue();
+				f = (Function*) functionPtr;
+			}
+			out << " " << f->getName().str();
+			if (f->getName().str() == "pthread_mutex_lock") {
+				ref<Expr> param = eval(ki, 1, state.currentThread).value;
+				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
+				out << " " << cexpr->getZExtValue();
+			} else if (f->getName().str() == "pthread_mutex_unlock") {
+				ref<Expr> param = eval(ki, 1, state.currentThread).value;
+				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
+				out << " " << cexpr->getZExtValue();
+			} else if (f->getName().str() == "pthread_cond_wait") {
+				//get lock
+				ref<Expr> param = eval(ki, 2, state.currentThread).value;
+				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
+				out << " " << cexpr->getZExtValue();
+				//get cond
+				param = eval(ki, 1, state.currentThread).value;
+				cexpr = dyn_cast<ConstantExpr>(param);
+				out << " " << cexpr->getZExtValue();
+			} else if (f->getName().str() == "pthread_cond_signal") {
+				ref<Expr> param = eval(ki, 1, state.currentThread).value;
+				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
+				out << " " << cexpr->getZExtValue();
+			} else if (f->getName().str() == "pthread_cond_broadcast") {
+				ref<Expr> param = eval(ki, 1, state.currentThread).value;
+				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(param);
+				out << " " << cexpr->getZExtValue();
+			}
+			break;
+		}
+
+		}
+		out << '\n';
+	} else {
+		out << "thread" << state.currentThread->threadId << " klee/internal 0: "
+				<< inst->getOpcodeName() << '\n';
+	}
+
+	out.close();
+	if (prefix && prefix->current() + 1 == prefix->end()) {
+		inst->print(errs());
+		Event* event = *prefix->current();
+		ref<Expr> param = eval(ki, 0, state.currentThread).value;
+		ConstantExpr* condition = dyn_cast<ConstantExpr>(param);
+		if (condition->getAPValue().getBoolValue() != event->condition) {
+			cerr << "\n前缀已被取反\n";
+		} else {
+			cerr << "\n前缀未被取反\n";
+		}
+	}
+}
+
+void Executor::printPrefix() {
+	if (prefix) {
+		string fileName = prefix->getName() + ".txt";
+		string errorMsg;
+		raw_fd_ostream out(fileName.c_str(), errorMsg,
+				raw_fd_ostream::F_Append);
+		prefix->print(out);
+		out.close();
+		//prefix->print(cerr);
 	}
 }

@@ -29,6 +29,9 @@ MutexScheduler* getMutexSchedulerByType(MutexScheduler::MutexSchedulerType type)
 		//scheduler = new RandomLockScheduler();
 		break;
 	}
+	default: {
+		scheduler = new FIFSMutexScheduler();
+	}
 
 	}
 	return scheduler;

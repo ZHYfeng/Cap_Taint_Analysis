@@ -71,7 +71,7 @@ namespace klee {
       DFS,
       BFS,
       RandomState,
-      RandomPath,
+//      RandomPath,
       NURS_CovNew,
       NURS_MD2U,
       NURS_Depth,

@@ -2,8 +2,6 @@
 
 #include "klee/Expr.h"
 #include "Trace.h"
-#include <vector>
-#include <map>
 #include <string>
 
 #include "Event.h"

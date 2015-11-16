@@ -15,13 +15,15 @@
 namespace klee {
 
 class Barrier {
+public:
+	std::string name;
+
 private:
 	std::vector<unsigned> blockedList;
 	unsigned count;
 	unsigned current;
 
-public:
-	std::string name;
+
 
 public:
 	static const unsigned DEFAULTCOUNT = 0x7fffffff;

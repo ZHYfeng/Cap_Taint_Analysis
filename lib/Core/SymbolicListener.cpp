@@ -6,22 +6,21 @@
  */
 
 #include "SymbolicListener.h"
-
 #include "klee/Expr.h"
 #include "PTree.h"
 #include "Trace.h"
 #include "Transfer.h"
-#include <iostream>
-#include <fstream>
+#include "AddressSpace.h"
+#include "Memory.h"
+
 #include <unistd.h>
-#include <malloc.h>
+#include <map>
+#include <sstream>
+#include <iostream>
 #include <string>
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/raw_ostream.h"
-
-#include "Encode.h"
-
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
@@ -40,18 +39,14 @@ using namespace std;
 using namespace llvm;
 
 #define EVENTS_DEBUG 0
-#define BIT_WIDTH 64
 
 #define PTR 0
-#define PRINT_RUNTIMEINFO 0
 #define DEBUGSTRCPY 0
 #define DEBUGSYMBOLIC 0
 #define COND_DEBUG 0
-bool isPrefixFinished = false;
 
 namespace klee {
 
-Event* lastEvent;
 std::vector<Event*>::iterator currentEvent, endEvent;
 //此Map更新有三处，全局变量初始化、Store、某些函数。
 std::map<std::string, ref<Expr> > symbolicMap;
@@ -59,9 +54,9 @@ std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
 std::map<string, std::vector<unsigned> > assertMap;
 bool kleeBr;
 
-SymbolicListener::SymbolicListener(Executor* executor) :
-		BitcodeListener(), executor(executor) {
-
+SymbolicListener::SymbolicListener(Executor* executor, RuntimeDataManager* rdManager) :
+		BitcodeListener(), executor(executor), rdManager(rdManager) {
+	Kind = SymbolicListenerKind;
 }
 
 SymbolicListener::~SymbolicListener() {
@@ -69,31 +64,39 @@ SymbolicListener::~SymbolicListener() {
 
 }
 
-/**
- * 消息响应函数，在被测程序解释执行之前调用
- */
+//消息响应函数，在被测程序解释执行之前调用
 void SymbolicListener::beforeRunMethodAsMain(ExecutionState &initialState) {
-	//push main function's stackframe
-//	KFunction* kf = initialState.stack[0].kf;
-	//runtime.pushStackFrame(kf->function, kf->numRegisters, initialState.threadId);
 
-	//statics
-	gettimeofday(&start, NULL);
 	//收集全局变量初始化值
 //	Trace* trace = rdManager.createNewTrace(executor->executionNum);
-	Module* m = executor->kmodule->module;
 	Trace* trace = rdManager->getCurrentTrace();
-	lastEvent = NULL;
 	currentEvent = trace->path.begin();
 	endEvent = trace->path.end();
+	//收集assert
+	for (std::vector<KFunction*>::iterator i =
+			executor->kmodule->functions.begin(), e =
+			executor->kmodule->functions.end(); i != e; ++i) {
+		KInstruction **instructions = (*i)->instructions;
+		for (unsigned j = 0; j < (*i)->numInstructions; j++) {
+			KInstruction *ki = instructions[j];
+			Instruction* inst = ki->inst;
+//			instructions[j]->inst->dump();
+			if (inst->getOpcode() == Instruction::Call) {
+				CallSite cs(inst);
+				Value *fp = cs.getCalledValue();
+				Function *f = executor->getTargetFunction(fp, initialState);
+				if (f && f->getName().str() == "__assert_fail") {
+					string fileName = ki->info->file;
+					unsigned line = ki->info->line;
+					assertMap[fileName].push_back(line);
+//					printf("fileName : %s, line : %d\n",fileName.c_str(),line);
+//					std::cerr << "call name : " << f->getName().str() << "\n";
+				}
+			}
+		}
+	}
 }
 
-/**
- * 消息响应函数，在被测程序解释执行之后调用
- */
-void SymbolicListener::afterPreparation() {
-
-}
 
 void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	Trace* trace = rdManager->getCurrentTrace();
@@ -493,7 +496,7 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 					ref<Expr> value = destos->read(destmo->getOffsetExpr(address), size);
 //					std::cerr<<"value : "<<value<<std::endl;
 //					std::cerr<<"value : "<<value<<std::endl;
-					if (isGlobalMO(destmo)) {
+					if (executor->isGlobalMO(destmo)) {
 						ref<Expr> value2 = manualMakeSymbolic(state,
 								(*currentEvent)->implicitGlobalVar[i], size, false);
 						ref<Expr> value1 = value;
@@ -515,7 +518,7 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 				const MemoryObject* pthreadmo = pthreadop.first;
 				Expr::Width size = BIT_WIDTH;
 				ref<Expr> value = pthreados->read(0, size);
-				if (isGlobalMO(pthreadmo)) {
+				if (executor->isGlobalMO(pthreadmo)) {
 					string globalVarFullName = (*currentEvent)->globalVarFullName;
 //					cerr << "globalVarFullName : " << globalVarFullName << "\n";
 					symbolicMap[globalVarFullName] = value;
@@ -550,12 +553,15 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 		currentEvent++;
 }
 
+
+//消息响应函数，在被测程序解释执行之后调用
 void SymbolicListener::afterRunMethodAsMain() {
 	//TODO: Add Encoding Feature
-	//statics
 	symbolicMap.clear();
+	addressSymbolicMap.clear();
+	assertMap.clear();
 	Trace* trace = rdManager->getCurrentTrace();
-
+	filter.filterUseless(trace);
 #if DEBUGSYMBOLIC
 	cerr << "all constraint :" << std::endl;
 	std::cerr << "storeSymbolicExpr = " << trace->storeSymbolicExpr.size()
@@ -564,16 +570,12 @@ void SymbolicListener::afterRunMethodAsMain() {
 			ie = trace->storeSymbolicExpr.end(); it != ie; ++it) {
 		it->get()->dump();
 	}
-#endif
-#if DEBUGSYMBOLIC
 	std::cerr << "brSymbolicExpr = " << trace->brSymbolicExpr.size()
 	<< std::endl;
 	for (std::vector<ref<Expr> >::iterator it = trace->brSymbolicExpr.begin(),
 			ie = trace->brSymbolicExpr.end(); it != ie; ++it) {
 		it->get()->dump();
 	}
-#endif
-#if DEBUGSYMBOLIC
 	std::cerr << "assertSymbolicExpr = " << trace->assertSymbolicExpr.size()
 	<< std::endl;
 
@@ -581,9 +583,6 @@ void SymbolicListener::afterRunMethodAsMain() {
 			ie = trace->assertSymbolicExpr.end(); it != ie; ++it) {
 		it->get()->dump();
 	}
-#endif
-	filter.filterUseless(trace);
-#if DEBUGSYMBOLIC
 	std::cerr << "kQueryExpr = " << trace->kQueryExpr.size()
 	<< std::endl;
 	for (std::vector<ref<Expr> >::iterator it = trace->kQueryExpr.begin(),
@@ -591,115 +590,40 @@ void SymbolicListener::afterRunMethodAsMain() {
 		it->get()->dump();
 	}
 #endif
-
-	unsigned allGlobal = 0;
 	unsigned brGlobal = 0;
-	gettimeofday(&finish, NULL);
-	double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
-			- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-	rdManager->runningCost += cost;
-	gettimeofday(&start, NULL);
-	if (executor->isSymbolicRun == 0) {
-		if (executor->execStatus != Executor::SUCCESS) {
-			cerr << "######################执行有错误,放弃本次执行####################\n";
-//			assert(0 && "debug");
-
-			//		if (rdManager.getCurrentTrace()->traceType == Trace::FAILED) {
-			//			cerr
-			//					<< "######################错误来自于前缀#############################\n";
-			//		} else {
-			//			cerr
-			//					<< "######################错误来自于执行#############################\n";
-			//		}
-		} else if (!rdManager->isCurrentTraceUntested()) {
-			rdManager->getCurrentTrace()->traceType = Trace::REDUNDANT;
-			cerr << "######################本条路径为旧路径####################\n";
-			getNewPrefix();
-		} else {
-			executor->isSymbolicRun = 1;
-			std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
-			std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
-			for (std::map<std::string, std::vector<Event *> >::iterator nit =
-					readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
-				allGlobal += nit->second.size();
-			}
-			for (std::map<std::string, std::vector<Event *> >::iterator nit =
-					writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
-				std::string varName = nit->first;
-				if (trace->readSet.find(varName) == trace->readSet.end()) {
-					allGlobal += nit->second.size();
-				}
-			}
-			rdManager->allGlobal += allGlobal;
-		}
-	} else if (executor->isSymbolicRun == 1) {
-		rdManager->getCurrentTrace()->traceType = Trace::UNIQUE;
-		std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
-		std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
-		for (std::map<std::string, std::vector<Event *> >::iterator nit =
-				readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
+	rdManager->getCurrentTrace()->traceType = Trace::UNIQUE;
+	std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
+	std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
+	for (std::map<std::string, std::vector<Event *> >::iterator nit =
+			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
+		brGlobal += nit->second.size();
+	}
+	for (std::map<std::string, std::vector<Event *> >::iterator nit =
+			writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
+		std::string varName = nit->first;
+		if (trace->readSet.find(varName) == trace->readSet.end()) {
 			brGlobal += nit->second.size();
 		}
-		for (std::map<std::string, std::vector<Event *> >::iterator nit =
-				writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
-			std::string varName = nit->first;
-			if (trace->readSet.find(varName) == trace->readSet.end()) {
-				brGlobal += nit->second.size();
-			}
-		}
-		rdManager->brGlobal += brGlobal;
-		cerr << "######################本条路径为新路径####################\n";
-		context ctx;
-		solver s(ctx);
-		Encode encode(rdManager, ctx, s);
-		encode.buildAllFormula();
-#if EVENTS_DEBUG
-		//true: output to file; false: output to terminal
-		rdManager.printCurrentTrace(true);
-		//			encode.showInitTrace();//need to be modified
-#endif
-		if (encode.verify()) {
-			encode.check_if();
-		}
-		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
-				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-		rdManager->solvingCost += cost;
-		getNewPrefix();
 	}
-
+	rdManager->brGlobal += brGlobal;
+	cerr << "######################本条路径为新路径####################\n";
+#if EVENTS_DEBUG
+	//true: output to file; false: output to terminal
+	rdManager.printCurrentTrace(true);
+	//			encode.showInitTrace();//need to be modified
+#endif
 }
 
-/**
- * 消息相应函数，在创建了新线程之后调用
- */
+
+//消息相应函数，在创建了新线程之后调用
 void SymbolicListener::createThread(ExecutionState &state, Thread* thread) {
-	Trace* trace = rdManager->getCurrentTrace();
-	trace->insertThreadCreateOrJoin(make_pair(lastEvent, thread->threadId),
-			true);
+
 }
 
-/**
- * 消息相应函数，在前缀执行出错之后程序推出之前调用
- */
+
+//消息相应函数，在前缀执行出错之后程序推出之前调用
 void SymbolicListener::executionFailed(ExecutionState &state, KInstruction *ki) {
 	rdManager->getCurrentTrace()->traceType = Trace::FAILED;
-}
-
-void SymbolicListener::getNewPrefix() {
-	//获取新的前缀
-	Prefix* prefix = rdManager->getNextPrefix();
-	//Prefix* prefix = NULL;
-	if (prefix) {
-		delete executor->prefix;
-		executor->prefix = prefix;
-		executor->isFinished = false;
-	} else {
-		executor->isFinished = true;
-#if PRINT_RUNTIMEINFO
-		rdManager.printAllTrace(cerr);
-#endif
-	}
 }
 
 ref<Expr> SymbolicListener::manualMakeSymbolic(ExecutionState& state,

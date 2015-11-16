@@ -12,9 +12,11 @@
 #include "Executor.h"
 #include "Memory.h"
 #include "BarrierInfo.h"
-
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/ExecutionState.h"
+#include "DealWithSymbolicExpr.h"
+#include "RuntimeDataManager.h"
+#include "BitcodeListener.h"
 
 #include <sstream>
 #include <iostream>
@@ -23,10 +25,6 @@
 #include <map>
 
 #include "llvm/Support/CallSite.h"
-
-#include "DealWithSymbolicExpr.h"
-#include "RuntimeDataManager.h"
-#include "BitcodeListener.h"
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Type.h"
@@ -46,11 +44,10 @@ namespace klee {
 
 class PSOListener: public BitcodeListener {
 public:
-	PSOListener(Executor* executor);
+	PSOListener(Executor* executor, RuntimeDataManager* rdManager);
 	~PSOListener();
 
 	void beforeRunMethodAsMain(ExecutionState &initialState);
-	void afterPreparation();
 	void executeInstruction(ExecutionState &state, KInstruction *ki);
 	void instructionExecuted(ExecutionState &state, KInstruction *ki);
 	void afterRunMethodAsMain();
@@ -70,28 +67,19 @@ private:
 	std::map<uint64_t, BarrierInfo*> barrierRecord;
 	std::map<llvm::Instruction*, VectorInfo*> getElementPtrRecord; // 记录getElementPtr解析的数组信息
 
-	//statics
-	struct timeval start, finish;
-
 private:
 	//std::vector<string> monitoredFunction;
 	void handleInitializer(llvm::Constant* initializer, MemoryObject* mo,
 			uint64_t& startAddress);
 	void handleConstantExpr(llvm::ConstantExpr* expr);
 	void insertGlobalVariable(ref<Expr> address, llvm::Type* type);
-	ref<Expr> getExprFromMemory(ref<Expr> address, ObjectPair& op,
-			llvm::Type* type);
-	llvm::Constant* handleFunctionReturnValue(ExecutionState& state,
-			KInstruction *ki);
+	ref<Expr> getExprFromMemory(ref<Expr> address, ObjectPair& op, llvm::Type* type);
+	llvm::Constant* handleFunctionReturnValue(ExecutionState& state, KInstruction *ki);
 	void handleExternalFunction(ExecutionState& state, KInstruction *ki);
 	void analyzeInputValue(uint64_t& address, ObjectPair& op, llvm::Type* type);
 	unsigned getLoadTime(uint64_t address);
 	unsigned getStoreTime(uint64_t address);
-	llvm::Function* getPointeredFunction(ExecutionState& state,
-			KInstruction* ki);
-	void printPrefix();
-	void printInstrcution(ExecutionState& state, KInstruction* ki);
-	void getNewPrefix();
+	llvm::Function* getPointeredFunction(ExecutionState& state, KInstruction* ki);
 
 	std::string createVarName(unsigned memoryId, ref<Expr> address,
 			bool isGlobal) {
@@ -147,19 +135,6 @@ private:
 		return ss.str();
 	}
 
-	bool isGlobalMO(const MemoryObject* mo) {
-		bool result;
-		if (mo->isGlobal) {
-			result = true;
-		} else {
-			if (mo->isLocal) {
-				result = false;
-			} else {
-				result = true;
-			}
-		}
-		return result;
-	}
 };
 
 }
