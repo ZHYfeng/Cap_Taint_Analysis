@@ -51,6 +51,7 @@ SymbolicListener::SymbolicListener(Executor* executor, RuntimeDataManager* rdMan
 		BitcodeListener(), executor(executor), rdManager(rdManager) {
 	Kind = SymbolicListenerKind;
 	kleeBr = false;
+	filter = rdManager->filter;
 }
 
 SymbolicListener::~SymbolicListener() {

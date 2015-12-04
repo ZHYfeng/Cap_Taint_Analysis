@@ -10,6 +10,7 @@
 
 #include "Trace.h"
 #include "Prefix.h"
+#include "DealWithSymbolicExpr.h"
 #include <set>
 namespace klee {
 
@@ -35,6 +36,7 @@ public:
 	double unSatCost;
 
 	unsigned runState;
+	DealWithSymbolicExpr filter;
 
 	RuntimeDataManager();
 	virtual ~RuntimeDataManager();

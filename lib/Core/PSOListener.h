@@ -14,7 +14,6 @@
 #include "BarrierInfo.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/ExecutionState.h"
-#include "DealWithSymbolicExpr.h"
 #include "RuntimeDataManager.h"
 #include "BitcodeListener.h"
 

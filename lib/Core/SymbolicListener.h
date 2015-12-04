@@ -37,7 +37,7 @@ public:
 
 private:
 	Executor* executor;
-	DealWithSymbolicExpr filter;
+	DealWithSymbolicExpr &filter;
 	RuntimeDataManager* rdManager;
 	std::vector<Event*>::iterator currentEvent, endEvent;
 	//此Map更新有两处，Load、某些函数。

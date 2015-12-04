@@ -120,7 +120,7 @@ void ListenerService::endControl(Executor* executor){
 	case 1: {
 		popListener();
 		Encode encode(&rdManager);
-		encode.buildAllFormula();
+		encode.buildifAndassert();
 		if (encode.verify()) {
 			encode.check_if();
 		}

@@ -15,6 +15,7 @@
 
 #include "Event.h"
 #include "RuntimeDataManager.h"
+#include "DealWithSymbolicExpr.h"
 enum InstType {
 	NormalOp, GlobalVarOp, ThreadOp
 };
@@ -29,13 +30,14 @@ private:
 	Trace* trace; //all data about encoding
 	context z3_ctx;
 	solver z3_solver;
+	DealWithSymbolicExpr &filter;
 	double solvingCost;
 	unsigned formulaNum;
 	unsigned solvingTimes;
 
 public:
 	Encode(RuntimeDataManager* data) :
-			runtimeData(data), z3_solver(z3_ctx) {
+			runtimeData(data), z3_solver(z3_ctx), filter(data->filter){
 		trace = data->getCurrentTrace();
 		solvingCost = 0.0;
 		formulaNum = 0;
@@ -46,6 +48,7 @@ public:
 		runtimeData->solvingTimes += solvingTimes;
 	}
 	void buildAllFormula();
+	void buildifAndassert();
 	void showInitTrace();
 	void check_output();
 	void check_if();
@@ -59,6 +62,7 @@ private:
 
 	vector<pair<Event*, expr> > ifFormula;
 	vector<pair<Event*, expr> > assertFormula;
+	vector<expr> kQueryFormula;
 
 	void buildInitValueFormula();
 	void buildPathCondition();

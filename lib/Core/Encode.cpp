@@ -137,6 +137,8 @@ bool Encode::verify() {
 		cerr << "Verifying assert " << i+1 << " @" << ss.str() << ": ";
 #endif
 		z3_solver.push();	//backtrack point 2
+		filter.filterUselessWithSet(trace, trace->assertRelatedSymbolicExpr[i]);
+		buildAllFormula();
 		Event* curr = assertFormula[i].first;
 		z3_solver.add(!assertFormula[i].second);
 		for (unsigned j = 0; j < assertFormula.size(); j++) {
@@ -250,6 +252,8 @@ void Encode::check_if() {
 
 		//create a backstracking point
 		z3_solver.push();
+		filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
+		buildAllFormula();
 		Event* curr = ifFormula[i].first;
 //		int branch = (long) ifFormula[i].first->inst->inst;
 
@@ -694,9 +698,9 @@ void Encode::buildInitValueFormula() {
 	cerr << "\nGlobal var initial size: " << trace->global_variable_initializer.size() << "\n";
 #endif
 	std::map<std::string, llvm::Constant*>::iterator gvi =
-			trace->global_variable_initializer.begin();
+			trace->useful_global_variable_initializer.begin();
 
-	for (; gvi != trace->global_variable_initializer.end(); gvi++) {
+	for (; gvi != trace->useful_global_variable_initializer.end(); gvi++) {
 		//bitwidth may introduce bug!!!
 		const Type *type = gvi->second->getType();
 		const z3::sort varType(llvmTy_to_z3Ty(type));
@@ -710,7 +714,7 @@ void Encode::buildInitValueFormula() {
 #endif
 	}
 	//statics
-	formulaNum += trace->global_variable_initializer.size();
+	formulaNum += trace->useful_global_variable_initializer.size();
 }
 
 void Encode::buildOutputFormula() {
@@ -783,7 +787,7 @@ void Encode::markLatestWriteForGlobalVar() {
 			continue;
 		for (unsigned index = 0; index < thread->size(); index++) {
 			Event* event = thread->at(index);
-			if (event->isGlobal) {
+			if (event->condition) {
 				Instruction *I = event->inst->inst;
 				if (StoreInst::classof(I)) { //write
 					latestWriteOneThread[event->varName] = event;
@@ -815,6 +819,21 @@ void Encode::markLatestWriteForGlobalVar() {
 }
 
 void Encode::buildPathCondition() {
+	std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
+	std::string varName;
+	unsigned int totalExpr = trace->kQueryExpr.size();
+	for (std::set<std::string>::iterator nit = RelatedSymbolicExpr.begin();
+			nit != RelatedSymbolicExpr.end(); ++nit) {
+		varName = *nit;
+		for (unsigned int i = 0; i < totalExpr; i++) {
+			if(varName == trace->kQueryExprVarName[i]) {
+				z3_solver.add(kQueryFormula[i]);
+			}
+		}
+	}
+}
+
+void Encode::buildifAndassert() {
 #if FORMULA_DEBUG
 	cerr << "\nBasicFormula:\n";
 #endif
@@ -823,7 +842,7 @@ void Encode::buildPathCondition() {
 	unsigned int totalExpr = trace->kQueryExpr.size();
 	for (unsigned int i = 0; i < totalExpr; i++) {
 		z3::expr temp = kq->getZ3Expr(trace->kQueryExpr[i]);
-		z3_solver.add(temp);
+		kQueryFormula.push_back(temp);
 #if FORMULA_DEBUG
 	cerr << temp << "\n";
 #endif
@@ -1231,16 +1250,16 @@ void Encode::buildReadWriteFormula() {
 //debug
 //print out all the read and write insts of global vars.
 	if (false) {
-		read = trace->readSet.begin();
-		for (; read != trace->readSet.end(); read++) {
+		read = trace->usefulReadSet.begin();
+		for (; read != trace->usefulReadSet.end(); read++) {
 			cerr << "global var read:" << read->first << "\n";
 			for (unsigned i = 0; i < read->second.size(); i++) {
 				cerr << read->second[i]->eventName << "---"
 						<< read->second[i]->globalVarFullName << "\n";
 			}
 		}
-		write = trace->writeSet.begin();
-		for (; write != trace->writeSet.end(); write++) {
+		write = trace->usefulWriteSet.begin();
+		for (; write != trace->usefulWriteSet.end(); write++) {
 			cerr << "global var write:" << write->first << "\n";
 			for (unsigned i = 0; i < write->second.size(); i++) {
 				cerr << write->second[i]->eventName << "---"
@@ -1250,11 +1269,11 @@ void Encode::buildReadWriteFormula() {
 	}
 //debug
 
-	map<string, vector<Event *> >::iterator ir = trace->readSet.begin(); //key--variable,
+	map<string, vector<Event *> >::iterator ir = trace->usefulReadSet.begin(); //key--variable,
 	Event *currentRead;
 	Event *currentWrite;
-	for (; ir != trace->readSet.end(); ir++) {
-		map<string, vector<Event *> >::iterator iw = trace->writeSet.find(
+	for (; ir != trace->usefulReadSet.end(); ir++) {
+		map<string, vector<Event *> >::iterator iw = trace->usefulWriteSet.find(
 				ir->first);
 		//maybe use the initial value from Initialization.@2014.4.16
 		//if(iw == writeSet.end())
@@ -1267,7 +1286,7 @@ void Encode::buildReadWriteFormula() {
 			//compute the write set that may be used by currentRead;
 			vector<Event *> mayBeRead;
 			unsigned currentWriteThreadId;
-			if (iw != trace->writeSet.end()) {
+			if (iw != trace->usefulWriteSet.end()) {
 				for (unsigned i = 0; i < iw->second.size(); i++) {
 					if (iw->second[i]->threadId == currentRead->threadId)
 						continue;
@@ -1399,12 +1418,12 @@ bool Encode::readFromInitFormula(Event * read, expr& ret) {
 	expr r = z3_ctx.constant(read->globalVarFullName.c_str(), varType);
 	string globalVar = read->varName;
 	std::map<std::string, llvm::Constant*>::iterator tempIt =
-			trace->global_variable_initializer.find(globalVar);
+			trace->useful_global_variable_initializer.find(globalVar);
 //	assert(
 //			(tempIt != data.global_variable_initializer.end())
 //					&& "Wrong with global var!");
 //	cerr << "current event: " << read->eventName << "  current globalVar: " << globalVar << "\n";
-	if (tempIt == trace->global_variable_initializer.end())
+	if (tempIt == trace->useful_global_variable_initializer.end())
 		return false;
 	string str = tempIt->first + "_Init";
 	expr w = z3_ctx.constant(str.c_str(), varType);
