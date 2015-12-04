@@ -3103,9 +3103,14 @@ void Executor::run(ExecutionState &initialState) {
 				// to pummel the freelist once we hit the memory cap.
 				unsigned mbs = util::GetTotalMallocUsage() >> 20;
 				if (mbs > MaxMemory) {
+					ki->inst->dump();
+					if (prefix && !prefix->isFinished()){
+						cerr << "prefix\n" ;
+					}
 					cerr << "mbs : " << mbs << " states.size() : " << states.size() << "\n";
 					if ((mbs > MaxMemory + 100) && 0) {
 						// just guess at how many to kill
+						execStatus = IGNOREDERROR;
 						unsigned numStates = states.size();
 						unsigned toKill = std::max(1U,
 								numStates - numStates * MaxMemory / mbs);

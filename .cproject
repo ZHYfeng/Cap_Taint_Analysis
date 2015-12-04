@@ -32,7 +32,7 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.2003876769" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.869364452" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base">
-								<option id="gnu.cpp.link.option.paths.1599675447" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+								<option id="gnu.cpp.link.option.paths.1599675447" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/home/zhy/work/llvm-3.3.src/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.921410149" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">

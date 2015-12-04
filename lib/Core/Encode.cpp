@@ -252,13 +252,14 @@ void Encode::check_if() {
 		z3_solver.push();
 		Event* curr = ifFormula[i].first;
 //		int branch = (long) ifFormula[i].first->inst->inst;
-		//2: collect info from the two former executions.
-		if (trace->Id >= 2) {
-#if BRANCH_INFO
-			cerr << "No!\n";
-#endif
-			continue;
-		}
+
+//		//2: collect info from the two former executions.
+//		if (trace->Id >= 2) {
+//#if BRANCH_INFO
+//			cerr << "No!\n";
+//#endif
+//			continue;
+//		}
 
 		z3_solver.add(!ifFormula[i].second);
 		for (unsigned j = 0; j < ifFormula.size(); j++) {

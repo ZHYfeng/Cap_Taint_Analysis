@@ -59,8 +59,13 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "allGlobal:0" << "\n";
 		ss << "brGlobal:0" << "\n";
 	}
-	ss << "AllBranch:" << satBranch + unSatBranch << "\n";
-	ss << "satBranch:" << satBranch << "\n";
+	if (testedTraceList.size()) {
+		ss << "AllBranch:" << ( satBranch + unSatBranch ) * 1.0 / testedTraceList.size() << "\n";
+		ss << "satBranch:" << satBranch * 1.0 / testedTraceList.size() << "\n";
+	} else {
+		ss << "AllBranch:0" << "\n";
+		ss << "satBranch:0" << "\n";
+	}
 	if (satBranch) {
 		ss << "satCost:" << satCost / satBranch << "\n";
 	} else {

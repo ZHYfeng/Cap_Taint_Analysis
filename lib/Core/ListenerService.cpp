@@ -85,6 +85,7 @@ void ListenerService::startControl(Executor* executor){
 		BitcodeListener* listener = new PSOListener(executor, &rdManager);
 		pushListener(listener);
 		executor->executionNum++;
+		gettimeofday(&start, NULL);
 		break;
 	}
 	case 1: {
@@ -94,6 +95,7 @@ void ListenerService::startControl(Executor* executor){
 		if (executor->prefix) {
 			executor->prefix->reuse();
 		}
+		gettimeofday(&start, NULL);
 		break;
 	}
 	case 2: {
@@ -109,6 +111,10 @@ void ListenerService::endControl(Executor* executor){
 	switch (runState) {
 	case 0: {
 		popListener();
+		gettimeofday(&finish, NULL);
+		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+		rdManager.runningCost += cost;
 		break;
 	}
 	case 1: {
@@ -119,6 +125,10 @@ void ListenerService::endControl(Executor* executor){
 			encode.check_if();
 		}
 		executor->getNewPrefix();
+		gettimeofday(&finish, NULL);
+		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+		rdManager.solvingCost += cost;
 		break;
 	}
 	case 2: {

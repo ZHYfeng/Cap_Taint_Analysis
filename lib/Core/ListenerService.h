@@ -22,6 +22,7 @@ private:
 	std::vector<BitcodeListener*> bitcodeListeners;
 	RuntimeDataManager rdManager;
 	unsigned runState;
+	struct timeval start, finish;
 
 public:
 	ListenerService() {
