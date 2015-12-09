@@ -30,16 +30,14 @@ private:
 	Trace* trace; //all data about encoding
 	context z3_ctx;
 	solver z3_solver;
-	DealWithSymbolicExpr &filter;
-	double solvingCost;
+	DealWithSymbolicExpr filter;
 	unsigned formulaNum;
 	unsigned solvingTimes;
 
 public:
 	Encode(RuntimeDataManager* data) :
-			runtimeData(data), z3_solver(z3_ctx), filter(data->filter){
+			runtimeData(data), z3_solver(z3_ctx) {
 		trace = data->getCurrentTrace();
-		solvingCost = 0.0;
 		formulaNum = 0;
 		solvingTimes = 0;
 	}
@@ -62,7 +60,7 @@ private:
 
 	vector<pair<Event*, expr> > ifFormula;
 	vector<pair<Event*, expr> > assertFormula;
-	vector<expr> kQueryFormula;
+	vector<expr> rwFormula;
 
 	void buildInitValueFormula();
 	void buildPathCondition();

@@ -62,11 +62,12 @@ public:
 	std::vector<ref<klee::Expr> > brSymbolicExpr;
 	std::vector<ref<klee::Expr> > assertSymbolicExpr;
 	std::vector<ref<klee::Expr> > kQueryExpr;
-	std::vector<std::string> kQueryExprVarName;
+	std::vector<ref<klee::Expr> > usefulkQueryExpr;
 	std::vector<std::set<std::string>* > brRelatedSymbolicExpr;
 	std::vector<std::set<std::string>* > assertRelatedSymbolicExpr;
 	std::set<std::string> RelatedSymbolicExpr;
 	std::map<std::string, std::set<std::string>* > varRelatedSymbolicExpr;
+	std::map<std::string, long> varThread;
 	std::vector<Event*> brEvent;
 	std::vector<Event*> assertEvent;
 

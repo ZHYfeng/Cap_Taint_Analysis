@@ -191,6 +191,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
 			item->isFunctionWithSourceCode = false;
 		}
+//		std::cerr<<"isFunctionWithSourceCode : "<<item->isFunctionWithSourceCode<<"\n";
 
 		//by hy
 		//store all call arg

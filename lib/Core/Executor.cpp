@@ -296,7 +296,7 @@ Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
 
 	memory = new MemoryManager();
 
-	listenerService = new ListenerService();
+	listenerService = new ListenerService(this);
 
 //  listener = new SymbolicListener(this);
 //  bitcodeListeners.push_back(listener);

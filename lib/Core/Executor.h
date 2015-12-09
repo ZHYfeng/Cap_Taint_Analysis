@@ -34,8 +34,8 @@
 #include "klee/Internal/Module/KModule.h"
 
 #include "BitcodeListener.h"
-#include "PSOListener.h"
 #include "ListenerService.h"
+#include "PSOListener.h"
 #include "MutexManager.h"
 #include "CondManager.h"
 #include "BarrierManager.h"

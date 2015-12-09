@@ -24,12 +24,10 @@ private:
 	unsigned runState;
 	struct timeval start, finish;
 
-public:
-	ListenerService() {
-		runState = 0;
-	}
-	~ListenerService(){
 
+public:
+	ListenerService(Executor* executor);
+	~ListenerService(){
 	}
 	void pushListener(BitcodeListener* bitcodeListener);
 	void removeListener(BitcodeListener* bitcodeListener);

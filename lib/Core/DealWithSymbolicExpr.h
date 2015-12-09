@@ -20,14 +20,14 @@ class DealWithSymbolicExpr {
 
 private:
 	std::set<std::string> allRelatedSymbolicExpr;
-	void resolveSymbolicExpr(ref<Expr> value, std::set<std::string> relatedSymbolicExpr);
+	void resolveSymbolicExpr(ref<Expr> value, std::set<std::string>* relatedSymbolicExpr);
 
 
 public:
 	void fillterTrace(Trace* trace, std::set<std::string> allRelatedSymbolicExpr);
 	void filterUseless(Trace* trace);
-	void filterUselessWithSet(Trace* trace, std::set<std::string>* relatedSymbolicExpr);
-	void addExprToSet(std::set<std::string>* Expr, std::set<std::string> relatedSymbolicExpr);
+	bool filterUselessWithSet(Trace* trace, std::set<std::string>* relatedSymbolicExpr);
+	void addExprToSet(std::set<std::string>* Expr, std::set<std::string>* relatedSymbolicExpr);
 	bool isRelated(std::string varName);
 	std::string getVarName(ref<Expr> value);
 	std::string getFullName(ref<Expr> value);

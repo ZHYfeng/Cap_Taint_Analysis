@@ -67,6 +67,7 @@ public:
 	EventType eventType;
 	Event * latestWrite; //the latest write event in the same thread
 	bool isGlobal; // is global variable  load, store, call strcpy in these three instruction this attribute will be assigned
+	bool usefulGlobal;
 	bool isLocal; // is local variable load, store, call strcpy in these three instruction this attribute will be assigned
 	bool isConditionIns; // is this event associated with a Br which has two targets
 	bool condition; // Br's condition

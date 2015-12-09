@@ -13,6 +13,7 @@
 #include "BitcodeListener.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/ExecutionState.h"
+#include "DealWithSymbolicExpr.h"
 
 namespace llvm {
 class Type;
@@ -37,8 +38,8 @@ public:
 
 private:
 	Executor* executor;
-	DealWithSymbolicExpr &filter;
 	RuntimeDataManager* rdManager;
+	DealWithSymbolicExpr filter;
 	std::vector<Event*>::iterator currentEvent, endEvent;
 	//此Map更新有两处，Load、某些函数。
 	std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;

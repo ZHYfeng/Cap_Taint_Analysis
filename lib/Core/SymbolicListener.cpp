@@ -51,7 +51,6 @@ SymbolicListener::SymbolicListener(Executor* executor, RuntimeDataManager* rdMan
 		BitcodeListener(), executor(executor), rdManager(rdManager) {
 	Kind = SymbolicListenerKind;
 	kleeBr = false;
-	filter = rdManager->filter;
 }
 
 SymbolicListener::~SymbolicListener() {
@@ -255,8 +254,10 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				}
 				executor->evalAgainst(ki, 0, thread, value);
 			}
-//			(*currentEvent)->inst->inst->dump();
-//			inst->dump();
+//			std::cerr<<"isFunctionWithSourceCode : ";
+//					(*currentEvent)->inst->inst->dump();
+//			std::cerr<<"isFunctionWithSourceCode : ";
+//					inst->dump();
 //			std::cerr<<"isFunctionWithSourceCode : "<<(*currentEvent)->isFunctionWithSourceCode<<"\n";
 			if (!(*currentEvent)->isFunctionWithSourceCode) {
 				unsigned numArgs = cs.arg_size();
@@ -390,12 +391,14 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 				isFloat = 1;
 			}
 			if ((*currentEvent)->isGlobal) {
+
 				//指针！！！
 #if PTR
 				if (isFloat || id == Type::IntegerTyID || id == Type::PointerTyID) {
 #else
 				if (isFloat || id == Type::IntegerTyID) {
 #endif
+
 					Expr::Width size = executor->getWidthForLLVMType(ki->inst->getType());
 					ref<Expr> address = executor->eval(ki, 0, thread).value;
 					ref<Expr> value = executor->getDestCell(thread, ki).value;
@@ -406,6 +409,7 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 //					cerr << "load globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
 //					cerr << "load value : " << value << "\n";
 					ref<Expr> constraint = EqExpr::create(value, symbolic);
+//					cerr << "rwSymbolicExpr : " << constraint << "\n";
 					trace->rwSymbolicExpr.push_back(constraint);
 				}
 			} else {
@@ -556,52 +560,7 @@ void SymbolicListener::afterRunMethodAsMain() {
 	symbolicMap.clear();
 	addressSymbolicMap.clear();
 	assertMap.clear();
-	Trace* trace = rdManager->getCurrentTrace();
-	filter.filterUseless(trace);
-#if DEBUGSYMBOLIC
-	cerr << "all constraint :" << std::endl;
-	std::cerr << "storeSymbolicExpr = " << trace->storeSymbolicExpr.size()
-	<< std::endl;
-	for (std::vector<ref<Expr> >::iterator it = trace->storeSymbolicExpr.begin(),
-			ie = trace->storeSymbolicExpr.end(); it != ie; ++it) {
-		it->get()->dump();
-	}
-	std::cerr << "brSymbolicExpr = " << trace->brSymbolicExpr.size()
-	<< std::endl;
-	for (std::vector<ref<Expr> >::iterator it = trace->brSymbolicExpr.begin(),
-			ie = trace->brSymbolicExpr.end(); it != ie; ++it) {
-		it->get()->dump();
-	}
-	std::cerr << "assertSymbolicExpr = " << trace->assertSymbolicExpr.size()
-	<< std::endl;
 
-	for (std::vector<ref<Expr> >::iterator it = trace->assertSymbolicExpr.begin(),
-			ie = trace->assertSymbolicExpr.end(); it != ie; ++it) {
-		it->get()->dump();
-	}
-	std::cerr << "kQueryExpr = " << trace->kQueryExpr.size()
-	<< std::endl;
-	for (std::vector<ref<Expr> >::iterator it = trace->kQueryExpr.begin(),
-			ie = trace->kQueryExpr.end(); it != ie; ++it) {
-		it->get()->dump();
-	}
-#endif
-	unsigned brGlobal = 0;
-	rdManager->getCurrentTrace()->traceType = Trace::UNIQUE;
-	std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
-	std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
-	for (std::map<std::string, std::vector<Event *> >::iterator nit =
-			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
-		brGlobal += nit->second.size();
-	}
-	for (std::map<std::string, std::vector<Event *> >::iterator nit =
-			writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
-		std::string varName = nit->first;
-		if (trace->readSet.find(varName) == trace->readSet.end()) {
-			brGlobal += nit->second.size();
-		}
-	}
-	rdManager->brGlobal += brGlobal;
 	cerr << "######################本条路径为新路径####################\n";
 #if EVENTS_DEBUG
 	//true: output to file; false: output to terminal

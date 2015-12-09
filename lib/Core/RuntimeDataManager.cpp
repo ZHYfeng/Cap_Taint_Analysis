@@ -71,7 +71,11 @@ RuntimeDataManager::~RuntimeDataManager() {
 	} else {
 		ss << "satCost:0" << "\n";
 	}
-	ss << "unSatBranch:" << unSatBranch << "\n";
+	if (testedTraceList.size()) {
+		ss << "unSatBranch:" << unSatBranch * 1.0 / testedTraceList.size()  << "\n";
+	} else {
+		ss << "unSatBranch:0" << "\n";
+	}
 	if (unSatBranch) {
 		ss << "unSatCost:" << unSatCost / unSatBranch << "\n";
 	} else {

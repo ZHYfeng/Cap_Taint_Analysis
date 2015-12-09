@@ -5,12 +5,19 @@
  *      Author: zhy
  */
 
+#ifndef LIB_CORE_LISTENERSERVICE_C_
+#define LIB_CORE_LISTENERSERVICE_C_
+
 #include "ListenerService.h"
 #include "PSOListener.h"
 #include "SymbolicListener.h"
 #include "Encode.h"
 
 namespace klee {
+
+ListenerService::ListenerService(Executor* executor) {
+	runState = 0;
+}
 
 void ListenerService::pushListener(BitcodeListener* bitcodeListener) {
 	bitcodeListeners.push_back(bitcodeListener);
@@ -142,3 +149,5 @@ void ListenerService::endControl(Executor* executor){
 }
 
 }
+
+#endif

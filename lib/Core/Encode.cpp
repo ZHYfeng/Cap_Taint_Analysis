@@ -90,11 +90,13 @@ void Encode::buildAllFormula() {
 //	}
 //	else assert(0 && "success");
 	//
-	cerr << "\nEncoding is over!\n";
 }
 
 //true :: assert can't be violated. false :: assert can be violated.
 bool Encode::verify() {
+#if FORMULA_DEBUG
+	showInitTrace();
+#endif
 	cerr << "\nVerifying this trace......\n";
 #if FORMULA_DEBUG
 	stringstream ss;
@@ -137,8 +139,22 @@ bool Encode::verify() {
 		cerr << "Verifying assert " << i+1 << " @" << ss.str() << ": ";
 #endif
 		z3_solver.push();	//backtrack point 2
-		filter.filterUselessWithSet(trace, trace->assertRelatedSymbolicExpr[i]);
-		buildAllFormula();
+		bool branch = filter.filterUselessWithSet(trace, trace->assertRelatedSymbolicExpr[i]);
+		if(branch){
+//		buildAllFormula();
+
+			//添加读写的解
+			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
+			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
+			std::string varName;
+			unsigned int totalRwExpr = trace->rwSymbolicExpr.size();
+			for (unsigned int j = 0; j < totalRwExpr; j++){
+				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
+				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
+					z3_solver.add(rwFormula[j]);
+				}
+			}
+
 		Event* curr = assertFormula[i].first;
 		z3_solver.add(!assertFormula[i].second);
 		for (unsigned j = 0; j < assertFormula.size(); j++) {
@@ -168,22 +184,18 @@ bool Encode::verify() {
 				constraint = implies(tempIf < currIf, ifFormula[j].second);
 			z3_solver.add(constraint);
 		}
+		formulaNum = formulaNum + ifFormula.size() - 1;
 		//statics
-		struct timeval start, finish;
-		gettimeofday(&start, NULL);
 
 		check_result result = z3_solver.check();
 
-		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
-				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-		solvingCost += cost;
 		solvingTimes++;
 		stringstream output;
 		if (result == z3::sat) {
 			//should compute the prefix violating assert
 			cerr << "Yes!\n";
 			runtimeData->clearAllPrefix();
+
 			//former :: replay the bug trace and erminate klee. later:: terminate klee directly
 			if (true) {
 				vector<Event*> vecEvent;
@@ -196,8 +208,6 @@ bool Encode::verify() {
 				cerr << "Assert Failure at "
 						<< assertFormula[i].first->inst->info->file << ": "
 						<< assertFormula[i].first->inst->info->line << "\n";
-				runtimeData->satBranch++;
-				runtimeData->satCost += cost;
 #if FORMULA_DEBUG
 				showPrefixInfo(prefix, assertFormula[i].first);
 #endif
@@ -219,14 +229,13 @@ bool Encode::verify() {
 		} else if (result == z3::unsat) {
 #if BRANCH_INFO
 			cerr << "No!\n";
-			runtimeData->unSatBranch++;
 #endif
 		}
+	} else {
+		cerr << "NNo!\n";
+	}
 		z3_solver.pop();	//backtrack point 2
 	}
-#if FORMULA_DEBUG
-	showInitTrace();
-#endif
 	z3_solver.pop();	//backtrack 1
 	cerr << "\nVerifying is over!\n";
 	return true;
@@ -252,91 +261,98 @@ void Encode::check_if() {
 
 		//create a backstracking point
 		z3_solver.push();
-		filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
-		buildAllFormula();
-		Event* curr = ifFormula[i].first;
-//		int branch = (long) ifFormula[i].first->inst->inst;
+		bool branch = filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
+		if(branch){
+//			buildAllFormula();
 
-//		//2: collect info from the two former executions.
-//		if (trace->Id >= 2) {
-//#if BRANCH_INFO
-//			cerr << "No!\n";
-//#endif
-//			continue;
-//		}
+			//添加读写的解
+			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
+			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
+			std::string varName;
+			unsigned int totalRwExpr = trace->rwSymbolicExpr.size();
+			for (unsigned int j = 0; j < totalRwExpr; j++){
+				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
+				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
+					z3_solver.add(rwFormula[j]);
+				}
+			}
 
-		z3_solver.add(!ifFormula[i].second);
-		for (unsigned j = 0; j < ifFormula.size(); j++) {
-			if (j == i) {
+			Event* curr = ifFormula[i].first;
+
+
+			z3_solver.add(!ifFormula[i].second);
+			for (unsigned j = 0; j < ifFormula.size(); j++) {
+				if (j == i) {
+					continue;
+				}
+				Event* temp = ifFormula[j].first;
+				expr currIf = z3_ctx.int_const(curr->eventName.c_str());
+				expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
+				expr constraint = z3_ctx.bool_val(1);
+				if (curr->threadId == temp->threadId) {
+					if (curr->eventId > temp->eventId)
+						constraint = ifFormula[j].second;
+				} else
+					constraint = implies(tempIf < currIf, ifFormula[j].second);
+				z3_solver.add(constraint);
+			}
+			//statics
+			formulaNum = formulaNum + ifFormula.size() - 1;
+			//solving
+			check_result result;
+			struct timeval start, finish;
+			gettimeofday(&start, NULL);
+			try {
+				//statics
+				result = z3_solver.check();
+			} catch (z3::exception & ex) {
+				std::cerr << "\nUnexpected error: " << ex << "\n";
 				continue;
 			}
-			Event* temp = ifFormula[j].first;
-			expr currIf = z3_ctx.int_const(curr->eventName.c_str());
-			expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
-			expr constraint = z3_ctx.bool_val(1);
-			if (curr->threadId == temp->threadId) {
-				if (curr->eventId > temp->eventId)
-					constraint = ifFormula[j].second;
-			} else
-				constraint = implies(tempIf < currIf, ifFormula[j].second);
-			z3_solver.add(constraint);
-		}
-		//statics
-		formulaNum = formulaNum + ifFormula.size() - 1;
-		//solving
-		check_result result;
-		struct timeval start, finish;
-		gettimeofday(&start, NULL);
-		try {
-			//statics
-			result = z3_solver.check();
+			gettimeofday(&finish, NULL);
+			double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+					- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 			solvingTimes++;
-		} catch (z3::exception & ex) {
-			std::cerr << "\nUnexpected error: " << ex << "\n";
-			continue;
-		}
-		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
-				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-		//
-		stringstream output;
-		if (result == z3::sat) {
-			vector<Event*> vecEvent;
-			computePrefix(vecEvent, ifFormula[i].first);
-			Prefix* prefix = new Prefix(vecEvent, trace->createThreadPoint,
-					ss.str());
-			output << "./output_info/" << prefix->getName() << ".z3expr";
-			//printf prefix to DIR output_info
-			runtimeData->addScheduleSet(prefix);
-			runtimeData->satBranch++;
-			runtimeData->satCost += cost;
+			stringstream output;
+			if (result == z3::sat) {
+				vector<Event*> vecEvent;
+				computePrefix(vecEvent, ifFormula[i].first);
+				Prefix* prefix = new Prefix(vecEvent, trace->createThreadPoint,
+						ss.str());
+				output << "./output_info/" << prefix->getName() << ".z3expr";
+				//printf prefix to DIR output_info
+				runtimeData->addScheduleSet(prefix);
+				runtimeData->satBranch++;
+				runtimeData->satCost += cost;
 #if FORMULA_DEBUG
-			showPrefixInfo(prefix, ifFormula[i].first);
+				showPrefixInfo(prefix, ifFormula[i].first);
 #endif
-		} else {
-			runtimeData->unSatBranch++;
-			runtimeData->unSatCost += cost;
-		}
+			} else {
+				runtimeData->unSatBranch++;
+				runtimeData->unSatCost += cost;
+			}
 
 #if BRANCH_INFO
-		if (result == z3::sat) {
-			sum++;
-			cerr << "Yes!\n";
+			if (result == z3::sat) {
+				sum++;
+				cerr << "Yes!\n";
 #if FORMULA_DEBUG
-		std::ofstream out_file(output.str().c_str(),std::ios_base::out|std::ios_base::app);
-		out_file << "!ifFormula[i].second : " << !ifFormula[i].second << "\n";
-		out_file <<"\n"<<z3_solver<<"\n";
-		model m = z3_solver.get_model();
-		out_file <<"\nz3_solver.get_model()\n";
-		out_file <<"\n"<<m<<"\n";
-		out_file.close();
+				std::ofstream out_file(output.str().c_str(),std::ios_base::out|std::ios_base::app);
+				out_file << "!ifFormula[i].second : " << !ifFormula[i].second << "\n";
+				out_file <<"\n"<<z3_solver<<"\n";
+				model m = z3_solver.get_model();
+				out_file <<"\nz3_solver.get_model()\n";
+				out_file <<"\n"<<m<<"\n";
+				out_file.close();
 #endif
-		} else if (result == z3::unsat) {
-			cerr << "No!\n";
-		} else
-			cerr << "Warning!\n";
+			} else if (result == z3::unsat) {
+				cerr << "No!\n";
+			} else
+				cerr << "Warning!\n";
 #endif
-
+		} else {
+			cerr << "NNo!\n";
+		}
 		//backstracking
 		z3_solver.pop();
 
@@ -686,9 +702,6 @@ void Encode::logStatisticInfo() {
 	out << "#Read/Write of shared points: " << readNumber << "/" << writeNumber
 			<< "\n";
 //	out << "#Constaints: " << constaintNumber << "\n";
-	stringstream ss;
-	ss << solvingCost;
-	out << "Solving Cost: " << ss.str() << " s\n";
 }
 
 void Encode::buildInitValueFormula() {
@@ -787,7 +800,8 @@ void Encode::markLatestWriteForGlobalVar() {
 			continue;
 		for (unsigned index = 0; index < thread->size(); index++) {
 			Event* event = thread->at(index);
-			if (event->condition) {
+			if (event->usefulGlobal) {
+//			if (event->isGlobal) {
 				Instruction *I = event->inst->inst;
 				if (StoreInst::classof(I)) { //write
 					latestWriteOneThread[event->varName] = event;
@@ -819,41 +833,75 @@ void Encode::markLatestWriteForGlobalVar() {
 }
 
 void Encode::buildPathCondition() {
-	std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
-	std::string varName;
-	unsigned int totalExpr = trace->kQueryExpr.size();
-	for (std::set<std::string>::iterator nit = RelatedSymbolicExpr.begin();
-			nit != RelatedSymbolicExpr.end(); ++nit) {
-		varName = *nit;
-		for (unsigned int i = 0; i < totalExpr; i++) {
-			if(varName == trace->kQueryExprVarName[i]) {
-				z3_solver.add(kQueryFormula[i]);
-			}
-		}
-	}
-}
-
-void Encode::buildifAndassert() {
 #if FORMULA_DEBUG
 	cerr << "\nBasicFormula:\n";
 #endif
 
 	KQuery2Z3 * kq = new KQuery2Z3(z3_ctx);
-	unsigned int totalExpr = trace->kQueryExpr.size();
+	unsigned int totalExpr = trace->usefulkQueryExpr.size();
 	for (unsigned int i = 0; i < totalExpr; i++) {
-		z3::expr temp = kq->getZ3Expr(trace->kQueryExpr[i]);
-		kQueryFormula.push_back(temp);
+		z3::expr temp = kq->getZ3Expr(trace->usefulkQueryExpr[i]);
+		z3_solver.add(temp);
 #if FORMULA_DEBUG
 	cerr << temp << "\n";
 #endif
 	}
-	//special handle for statement br
-	unsigned int totalAssertEvent = trace->assertEvent.size();
-	unsigned int totalBrEvent = trace->brEvent.size();
-	unsigned int totalAssertSymbolic = trace->assertSymbolicExpr.size();
 
-	assert(
-			totalAssertEvent == totalAssertSymbolic
+}
+
+void Encode::buildifAndassert() {
+	Trace* trace = runtimeData->getCurrentTrace();
+	filter.filterUseless(trace);
+#if DEBUGSYMBOLIC
+	cerr << "all constraint :" << std::endl;
+	std::cerr << "storeSymbolicExpr = " << trace->storeSymbolicExpr.size()
+	<< std::endl;
+	for (std::vector<ref<Expr> >::iterator it = trace->storeSymbolicExpr.begin(),
+			ie = trace->storeSymbolicExpr.end(); it != ie; ++it) {
+		it->get()->dump();
+	}
+	std::cerr << "brSymbolicExpr = " << trace->brSymbolicExpr.size()
+	<< std::endl;
+	for (std::vector<ref<Expr> >::iterator it = trace->brSymbolicExpr.begin(),
+			ie = trace->brSymbolicExpr.end(); it != ie; ++it) {
+		it->get()->dump();
+	}
+	std::cerr << "assertSymbolicExpr = " << trace->assertSymbolicExpr.size()
+	<< std::endl;
+
+	for (std::vector<ref<Expr> >::iterator it = trace->assertSymbolicExpr.begin(),
+			ie = trace->assertSymbolicExpr.end(); it != ie; ++it) {
+		it->get()->dump();
+	}
+	std::cerr << "kQueryExpr = " << trace->kQueryExpr.size()
+	<< std::endl;
+	for (std::vector<ref<Expr> >::iterator it = trace->kQueryExpr.begin(),
+			ie = trace->kQueryExpr.end(); it != ie; ++it) {
+		it->get()->dump();
+	}
+#endif
+	unsigned brGlobal = 0;
+	runtimeData->getCurrentTrace()->traceType = Trace::UNIQUE;
+	std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
+	std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
+	for (std::map<std::string, std::vector<Event *> >::iterator nit =
+			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
+		brGlobal += nit->second.size();
+	}
+	for (std::map<std::string, std::vector<Event *> >::iterator nit =
+			writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
+		std::string varName = nit->first;
+		if (trace->readSet.find(varName) == trace->readSet.end()) {
+			brGlobal += nit->second.size();
+		}
+	}
+	runtimeData->brGlobal += brGlobal;
+
+	KQuery2Z3 * kq = new KQuery2Z3(z3_ctx);
+
+	unsigned int totalAssertEvent = trace->assertEvent.size();
+	unsigned int totalAssertSymbolic = trace->assertSymbolicExpr.size();
+	assert( totalAssertEvent == totalAssertSymbolic
 					&& "the number of brEvent is not equal to brSymbolic");
 	Event * event = NULL;
 	z3::expr res = z3_ctx.bool_val(true);
@@ -869,6 +917,8 @@ void Encode::buildifAndassert() {
 //			ifFormula.push_back(make_pair(event, res));
 
 	}
+
+	unsigned int totalBrEvent = trace->brEvent.size();
 	for (unsigned int i = 0; i < totalBrEvent; i++) {
 		event = trace->brEvent[i];
 		res = kq->getZ3Expr(trace->brSymbolicExpr[i]);
@@ -885,6 +935,15 @@ void Encode::buildifAndassert() {
 			z3_solver.add(res);
 		}
 	}
+
+
+	unsigned int totalRwExpr = trace->rwSymbolicExpr.size();
+	for (unsigned int i = 0; i < totalRwExpr; i++) {
+		res = kq->getZ3Expr(trace->rwSymbolicExpr[i]);
+		rwFormula.push_back(res);
+//		cerr << "rwSymbolicExpr : " << res << "\n";
+	}
+	buildAllFormula();
 }
 
 expr Encode::buildExprForConstantValue(Value *V, bool isLeft,
