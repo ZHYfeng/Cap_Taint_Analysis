@@ -29,6 +29,7 @@ public:
 	unsigned solvingTimes;
 	unsigned satBranch;
 	unsigned unSatBranch;
+	unsigned uunSatBranch;
 	double runningCost;
 	double solvingCost;
 	double satCost;

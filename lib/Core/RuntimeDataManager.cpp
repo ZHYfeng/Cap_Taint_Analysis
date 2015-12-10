@@ -31,6 +31,7 @@ RuntimeDataManager::RuntimeDataManager() :
 	solvingTimes = 0;
 	satBranch = 0;
 	unSatBranch = 0;
+	uunSatBranch = 0;
 	solvingCost = 0.0;
 	runningCost = 0.0;
 	satCost = 0.0;
@@ -80,6 +81,11 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "unSatCost:" << unSatCost / unSatBranch << "\n";
 	} else {
 		ss << "unSatCost:0" << "\n";
+	}
+	if (testedTraceList.size()) {
+		ss << "uunSatBranch:" << uunSatBranch * 1.0 / testedTraceList.size()  << "\n";
+	} else {
+		ss << "uunSatBranch:0" << "\n";
 	}
 	ss << "SolvingCost:" << solvingCost << "\n";
 	ss << "RunningCost:" << runningCost << "\n";

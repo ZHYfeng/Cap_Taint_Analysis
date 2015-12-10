@@ -411,6 +411,7 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 					ref<Expr> constraint = EqExpr::create(value, symbolic);
 //					cerr << "rwSymbolicExpr : " << constraint << "\n";
 					trace->rwSymbolicExpr.push_back(constraint);
+					trace->rwEvent.push_back(*currentEvent);
 				}
 			} else {
 				//会丢失指针的一些关系约束，但是不影响。

@@ -9,6 +9,7 @@
 #define ENCODE_H_
 
 #include "Trace.h"
+#include "KQuery2Z3.h"
 #include <z3++.h>
 #include <stack>
 #include <utility>
@@ -60,13 +61,13 @@ private:
 
 	vector<pair<Event*, expr> > ifFormula;
 	vector<pair<Event*, expr> > assertFormula;
-	vector<expr> rwFormula;
+	vector<pair<Event*, expr> > rwFormula;
 
-	void buildInitValueFormula();
-	void buildPathCondition();
+	void buildInitValueFormula(solver z3_solver_init);
+	void buildPathCondition(solver z3_solver_pc);
 	void buildMemoryModelFormula();
 	void buildPartialOrderFormula();
-	void buildReadWriteFormula();
+	void buildReadWriteFormula(solver z3_solver_rw);
 	void buildSynchronizeFormula();
 	void buildOutputFormula();
 

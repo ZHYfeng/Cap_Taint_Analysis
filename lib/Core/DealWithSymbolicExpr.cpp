@@ -270,6 +270,18 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 		}
 	}
 
+#if DEBUG
+	std::cerr << "\n" << varName << "\n varRelatedSymbolicExpr " << std::endl;
+	for (std::map<std::string, std::set<std::string>* >::iterator nit = varRelatedSymbolicExpr.begin();
+			nit != varRelatedSymbolicExpr.end(); ++nit) {
+		std::cerr << "name : " << (*nit).first << "\n";
+		for (std::set<std::string>::iterator it = (*nit).second->begin(),
+				ie = (*nit).second->end(); it != ie; ++it) {
+			std::cerr << *it << std::endl;
+		}
+	}
+#endif
+
 	std::map<std::string, long> &varThread = trace->varThread;
 
 	std::map<std::string, std::vector<Event *> > usefulReadSet;
@@ -334,7 +346,15 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 		writeSet.insert(*nit);
 	}
 
+	for (std::map<std::string, long> ::iterator nit = varThread.begin(),
+			nie = varThread.end(); nit != nie; ++nit) {
+		if (usefulWriteSet.find((*nit).first) == usefulWriteSet.end()) {
+			(*nit).second = -1;
+		}
+	}
+
 #if DEBUG
+	std::cerr << "varThread\n";
 	for (std::map<std::string, long>::iterator nit =
 			varThread.begin(), nie = varThread.end(); nit != nie; ++nit) {
 		std::cerr << nit->first << " : " << nit->second << "\n";
@@ -442,7 +462,7 @@ bool DealWithSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::stri
 		}
 	}
 	if(branch){
-//		fillterTrace(trace, RelatedSymbolicExpr);
+		fillterTrace(trace, RelatedSymbolicExpr);
 		return true;
 	}else {
 		return false;

@@ -68,6 +68,7 @@ public:
 	std::set<std::string> RelatedSymbolicExpr;
 	std::map<std::string, std::set<std::string>* > varRelatedSymbolicExpr;
 	std::map<std::string, long> varThread;
+	std::vector<Event*> rwEvent;
 	std::vector<Event*> brEvent;
 	std::vector<Event*> assertEvent;
 

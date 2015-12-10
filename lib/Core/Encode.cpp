@@ -77,11 +77,11 @@ struct Pair {
 };
 
 void Encode::buildAllFormula() {
-	buildInitValueFormula();
-	buildPathCondition();
+	buildInitValueFormula(z3_solver);
+	buildPathCondition(z3_solver);
 	buildMemoryModelFormula();
 	buildPartialOrderFormula();
-	buildReadWriteFormula();
+	buildReadWriteFormula(z3_solver);
 	buildSynchronizeFormula();
 	//debug: test satisfy of the model
 //	check_result result = z3_solver.check();
@@ -143,19 +143,30 @@ bool Encode::verify() {
 		if(branch){
 //		buildAllFormula();
 
+			Event* curr = assertFormula[i].first;
+
 			//添加读写的解
 			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
 			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
 			std::string varName;
-			unsigned int totalRwExpr = trace->rwSymbolicExpr.size();
+			unsigned int totalRwExpr = rwFormula.size();
 			for (unsigned int j = 0; j < totalRwExpr; j++){
 				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
 				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
-					z3_solver.add(rwFormula[j]);
+					Event* temp = rwFormula[j].first;
+					expr currIf = z3_ctx.int_const(curr->eventName.c_str());
+					expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
+					expr constraint = z3_ctx.bool_val(1);
+					if (curr->threadId == temp->threadId) {
+						if (curr->eventId > temp->eventId)
+							constraint = rwFormula[j].second;
+					} else {
+						constraint = implies(tempIf < currIf, rwFormula[j].second);
+					}
+					z3_solver.add(constraint);
 				}
 			}
 
-		Event* curr = assertFormula[i].first;
 		z3_solver.add(!assertFormula[i].second);
 		for (unsigned j = 0; j < assertFormula.size(); j++) {
 			if (j == i) {
@@ -263,22 +274,59 @@ void Encode::check_if() {
 		z3_solver.push();
 		bool branch = filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
 		if(branch){
+			solver temp_solver(z3_ctx);
+			KQuery2Z3 * kq = new KQuery2Z3(z3_ctx);
+			z3::expr res = kq->getZ3Expr(trace->brSymbolicExpr[i]);
+			temp_solver.add(!res);
+			buildInitValueFormula(temp_solver);
+			buildPathCondition(temp_solver);
+			buildReadWriteFormula(temp_solver);
+
+//			cerr << "!ifFormula[i].second : " << !ifFormula[i].second << "\n";
+//			cerr << "\n"<<temp_solver<<"\n";
+//			cerr << "end\n";
+
+			check_result result;
+			try {
+				//statics
+				result = temp_solver.check();
+			} catch (z3::exception & ex) {
+				std::cerr << "\nUnexpected error: " << ex << "\n";
+				continue;
+			}
+			if (result == z3::unsat) {
+				branch = 0;
+				cerr << "NNNo!\n";
+			}
+		}
+
+		if(branch){
 //			buildAllFormula();
+
+			Event* curr = ifFormula[i].first;
 
 			//添加读写的解
 			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
 			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
 			std::string varName;
-			unsigned int totalRwExpr = trace->rwSymbolicExpr.size();
+			unsigned int totalRwExpr = rwFormula.size();
 			for (unsigned int j = 0; j < totalRwExpr; j++){
 				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
 				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
-					z3_solver.add(rwFormula[j]);
+					Event* temp = rwFormula[j].first;
+					expr currIf = z3_ctx.int_const(curr->eventName.c_str());
+					expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
+					expr constraint = z3_ctx.bool_val(1);
+					if (curr->threadId == temp->threadId) {
+						if (curr->eventId > temp->eventId)
+							constraint = rwFormula[j].second;
+					} else {
+						constraint = implies(tempIf < currIf, rwFormula[j].second);
+					}
+					z3_solver.add(constraint);
+//					z3_solver.add(rwFormula[j].second);
 				}
 			}
-
-			Event* curr = ifFormula[i].first;
-
 
 			z3_solver.add(!ifFormula[i].second);
 			for (unsigned j = 0; j < ifFormula.size(); j++) {
@@ -351,6 +399,7 @@ void Encode::check_if() {
 				cerr << "Warning!\n";
 #endif
 		} else {
+			runtimeData->uunSatBranch++;
 			cerr << "NNo!\n";
 		}
 		//backstracking
@@ -704,7 +753,7 @@ void Encode::logStatisticInfo() {
 //	out << "#Constaints: " << constaintNumber << "\n";
 }
 
-void Encode::buildInitValueFormula() {
+void Encode::buildInitValueFormula(solver z3_solver_init) {
 //for global initializer
 #if FORMULA_DEBUG
 	cerr << "\nGlobal var initial value:\n";
@@ -720,7 +769,7 @@ void Encode::buildInitValueFormula() {
 		string str = gvi->first + "_Init";
 		expr lhs = z3_ctx.constant(str.c_str(), varType);
 		expr rhs = buildExprForConstantValue(gvi->second, false, "");
-		z3_solver.add(lhs == rhs);
+		z3_solver_init.add(lhs == rhs);
 
 #if FORMULA_DEBUG
 		cerr << (lhs == rhs) << "\n";
@@ -832,16 +881,16 @@ void Encode::markLatestWriteForGlobalVar() {
 	}
 }
 
-void Encode::buildPathCondition() {
+void Encode::buildPathCondition(solver z3_solver_pc) {
 #if FORMULA_DEBUG
 	cerr << "\nBasicFormula:\n";
 #endif
 
-	KQuery2Z3 * kq = new KQuery2Z3(z3_ctx);
+	KQuery2Z3 *kq = new KQuery2Z3(z3_ctx);;
 	unsigned int totalExpr = trace->usefulkQueryExpr.size();
 	for (unsigned int i = 0; i < totalExpr; i++) {
 		z3::expr temp = kq->getZ3Expr(trace->usefulkQueryExpr[i]);
-		z3_solver.add(temp);
+		z3_solver_pc.add(temp);
 #if FORMULA_DEBUG
 	cerr << temp << "\n";
 #endif
@@ -939,8 +988,9 @@ void Encode::buildifAndassert() {
 
 	unsigned int totalRwExpr = trace->rwSymbolicExpr.size();
 	for (unsigned int i = 0; i < totalRwExpr; i++) {
+		event = trace->rwEvent[i];
 		res = kq->getZ3Expr(trace->rwSymbolicExpr[i]);
-		rwFormula.push_back(res);
+		rwFormula.push_back(make_pair(event, res));
 //		cerr << "rwSymbolicExpr : " << res << "\n";
 	}
 	buildAllFormula();
@@ -1294,7 +1344,7 @@ void Encode::buildPartialOrderFormula() {
 	formulaNum += trace->joinThreadPoint.size();
 }
 
-void Encode::buildReadWriteFormula() {
+void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 #if FORMULA_DEBUG
 	cerr << "\nReadWriteFormula:\n";
 #endif
@@ -1428,7 +1478,7 @@ void Encode::buildReadWriteFormula() {
 #if FORMULA_DEBUG
 			cerr << oneReadExprs << "\n";
 #endif
-			z3_solver.add(oneReadExprs);
+			z3_solver_rw.add(oneReadExprs);
 		}
 	}
 }
