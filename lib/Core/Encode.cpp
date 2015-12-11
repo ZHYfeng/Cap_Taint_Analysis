@@ -139,33 +139,9 @@ bool Encode::verify() {
 		cerr << "Verifying assert " << i+1 << " @" << ss.str() << ": ";
 #endif
 		z3_solver.push();	//backtrack point 2
-		bool branch = filter.filterUselessWithSet(trace, trace->assertRelatedSymbolicExpr[i]);
-		if(branch){
 //		buildAllFormula();
 
 			Event* curr = assertFormula[i].first;
-
-			//添加读写的解
-			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
-			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
-			std::string varName;
-			unsigned int totalRwExpr = rwFormula.size();
-			for (unsigned int j = 0; j < totalRwExpr; j++){
-				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
-				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
-					Event* temp = rwFormula[j].first;
-					expr currIf = z3_ctx.int_const(curr->eventName.c_str());
-					expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
-					expr constraint = z3_ctx.bool_val(1);
-					if (curr->threadId == temp->threadId) {
-						if (curr->eventId > temp->eventId)
-							constraint = rwFormula[j].second;
-					} else {
-						constraint = implies(tempIf < currIf, rwFormula[j].second);
-					}
-					z3_solver.add(constraint);
-				}
-			}
 
 		z3_solver.add(!assertFormula[i].second);
 		for (unsigned j = 0; j < assertFormula.size(); j++) {
@@ -242,9 +218,6 @@ bool Encode::verify() {
 			cerr << "No!\n";
 #endif
 		}
-	} else {
-		cerr << "NNo!\n";
-	}
 		z3_solver.pop();	//backtrack point 2
 	}
 	z3_solver.pop();	//backtrack 1
@@ -272,32 +245,55 @@ void Encode::check_if() {
 
 		//create a backstracking point
 		z3_solver.push();
+
+		struct timeval start, finish;
+		gettimeofday(&start, NULL);
+
 		bool branch = filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
-		if(branch){
-			solver temp_solver(z3_ctx);
-			KQuery2Z3 * kq = new KQuery2Z3(z3_ctx);
-			z3::expr res = kq->getZ3Expr(trace->brSymbolicExpr[i]);
-			temp_solver.add(!res);
-			buildInitValueFormula(temp_solver);
-			buildPathCondition(temp_solver);
-			buildReadWriteFormula(temp_solver);
 
-//			cerr << "!ifFormula[i].second : " << !ifFormula[i].second << "\n";
-//			cerr << "\n"<<temp_solver<<"\n";
-//			cerr << "end\n";
+		gettimeofday(&finish, NULL);
+		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+		cerr << "CCost : " << cost << "\n";
 
-			check_result result;
-			try {
-				//statics
-				result = temp_solver.check();
-			} catch (z3::exception & ex) {
-				std::cerr << "\nUnexpected error: " << ex << "\n";
-				continue;
-			}
-			if (result == z3::unsat) {
-				branch = 0;
-				cerr << "NNNo!\n";
-			}
+		if (!branch) {
+			cerr << "NNo!\n";
+//		} else {
+//			cerr << "YYes!\n";
+//			struct timeval start, finish;
+//			gettimeofday(&start, NULL);
+//
+//			solver temp_solver(z3_ctx);
+//			KQuery2Z3 * kq = new KQuery2Z3(z3_ctx);
+//			z3::expr res = kq->getZ3Expr(trace->brSymbolicExpr[i]);
+//			temp_solver.add(!res);
+//			buildInitValueFormula(temp_solver);
+//			buildPathCondition(temp_solver);
+//			buildReadWriteFormula(temp_solver);
+//
+////			cerr << "!ifFormula[i].second : " << !ifFormula[i].second << "\n";
+////			cerr << "\n"<<temp_solver<<"\n";
+////			cerr << "end\n";
+//
+//			check_result result;
+//			try {
+//				//statics
+//				result = temp_solver.check();
+//			} catch (z3::exception & ex) {
+//				std::cerr << "\nUnexpected error: " << ex << "\n";
+//				continue;
+//			}
+//			if (result == z3::unsat) {
+//				branch = 0;
+//				cerr << "NNNo!\n";
+//			} else {
+//				cerr << "YYYes!\n";
+//			}
+//
+//			gettimeofday(&finish, NULL);
+//			double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+//					- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+//			cerr << "CCCost : " << cost << "\n";
 		}
 
 		if(branch){
@@ -360,6 +356,7 @@ void Encode::check_if() {
 			gettimeofday(&finish, NULL);
 			double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 					- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+			cerr << "Cost : " << cost << "\n";
 			solvingTimes++;
 			stringstream output;
 			if (result == z3::sat) {
@@ -400,7 +397,6 @@ void Encode::check_if() {
 #endif
 		} else {
 			runtimeData->uunSatBranch++;
-			cerr << "NNo!\n";
 		}
 		//backstracking
 		z3_solver.pop();
