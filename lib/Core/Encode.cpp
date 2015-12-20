@@ -302,28 +302,28 @@ void Encode::check_if() {
 
 			Event* curr = ifFormula[i].first;
 
-			//添加读写的解
-			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
-			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
-			std::string varName;
-			unsigned int totalRwExpr = rwFormula.size();
-			for (unsigned int j = 0; j < totalRwExpr; j++){
-				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
-				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
-					Event* temp = rwFormula[j].first;
-					expr currIf = z3_ctx.int_const(curr->eventName.c_str());
-					expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
-					expr constraint = z3_ctx.bool_val(1);
-					if (curr->threadId == temp->threadId) {
-						if (curr->eventId > temp->eventId)
-							constraint = rwFormula[j].second;
-					} else {
-						constraint = implies(tempIf < currIf, rwFormula[j].second);
-					}
-					z3_solver.add(constraint);
-//					z3_solver.add(rwFormula[j].second);
-				}
-			}
+//			//添加读写的解
+//			std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
+//			std::vector<ref<klee::Expr> > &rwSymbolicExpr = trace->rwSymbolicExpr;
+//			std::string varName;
+//			unsigned int totalRwExpr = rwFormula.size();
+//			for (unsigned int j = 0; j < totalRwExpr; j++){
+//				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
+//				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
+//					Event* temp = rwFormula[j].first;
+//					expr currIf = z3_ctx.int_const(curr->eventName.c_str());
+//					expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
+//					expr constraint = z3_ctx.bool_val(1);
+//					if (curr->threadId == temp->threadId) {
+//						if (curr->eventId > temp->eventId)
+//							constraint = rwFormula[j].second;
+//					} else {
+//						constraint = implies(tempIf < currIf, rwFormula[j].second);
+//					}
+//					z3_solver.add(constraint);
+////					z3_solver.add(rwFormula[j].second);
+//				}
+//			}
 
 			z3_solver.add(!ifFormula[i].second);
 			for (unsigned j = 0; j < ifFormula.size(); j++) {
@@ -1014,7 +1014,11 @@ expr Encode::buildExprForConstantValue(Value *V, bool isLeft,
 		if (num_bit == 1)
 			ret = z3_ctx.bool_val(val);
 		else
+#if INT_ARITHMETIC
+			ret = z3_ctx.int_val(val);
+#else
 			ret = z3_ctx.bv_val(val, BIT_WIDTH);
+#endif
 	} else if (ConstantFP *cf = dyn_cast<ConstantFP>(V)) {
 		double val;
 		APFloat apf = cf->getValueAPF();
@@ -1032,7 +1036,11 @@ expr Encode::buildExprForConstantValue(Value *V, bool isLeft,
 		ret = z3_ctx.real_val(s);
 	} else if (dyn_cast<ConstantPointerNull>(V)) {
 		//%cmp = icmp eq %struct.bounded_buf_tag* %tmp, null
+#if INT_ARITHMETIC
+		ret = z3_ctx.int_val(0);
+#else
 		ret = z3_ctx.bv_val(0, BIT_WIDTH);
+#endif
 	} else if (llvm::ConstantExpr* constantExpr = dyn_cast<llvm::ConstantExpr>(
 			V)) {
 		Instruction* inst = constantExpr->getAsInstruction();
@@ -1042,7 +1050,11 @@ expr Encode::buildExprForConstantValue(Value *V, bool isLeft,
 			ConstantInt * ci = dyn_cast<ConstantInt>(ptrtoint->getOperand(0));
 			assert(ci && "Impossible!");
 			int val = ci->getValue().getLimitedValue();
+#if INT_ARITHMETIC
+			ret = z3_ctx.int_val(val);
+#else
 			ret = z3_ctx.bv_val(val, BIT_WIDTH);	//to pointer, the default is 32bit.
+#endif
 		} else {
 			assert(0 && "unknown type of Value:1");
 		}
