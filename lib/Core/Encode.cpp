@@ -64,6 +64,7 @@
 #define BUFFERSIZE 300
 #define BIT_WIDTH 64
 #define POINT_BIT_WIDTH 64
+#define INT_ARITHMETIC 1
 
 
 using namespace llvm;
@@ -540,14 +541,22 @@ void Encode::showPrefixInfo(Prefix* prefix, Event* ifEvent) {
 				continue;
 			}
 			stringstream ss;
+#if INT_ARITHMETIC
+			ss << m.eval(z3_ctx.int_const(str.c_str()));
+#else
 			ss << m.eval(z3_ctx.bv_const(str.c_str(), BIT_WIDTH));	//just for
+#endif
 			out_to_file << ss.str();
 		}
 		if (currEvent->isLocal) {
 			out_to_file << "--" << currEvent->varName << "=";
 			string str = currEvent->varName;
 			stringstream ss;
+#if INT_ARITHMETIC
+			ss << m.eval(z3_ctx.int_const(str.c_str()));
+#else
 			ss << m.eval(z3_ctx.bv_const(str.c_str(), BIT_WIDTH));
+#endif
 			out_to_file << ss.str();
 		}
 		out_to_file << "\n";
@@ -1073,10 +1082,15 @@ z3::sort Encode::llvmTy_to_z3Ty(const Type *typ) {
 		assert(0 && "couldn't handle X86_MMX type!");
 		break;
 	case Type::IntegerTyID: {
-		if (typ->isIntegerTy(1)) {
-			return z3_ctx.bool_sort();
+		unsigned num_bit = ((IntegerType *) typ)->getBitWidth();
+		if (num_bit == 1) {
+			return z3_ctx.bool_sort();;
 		} else {
+#if INT_ARITHMETIC
+			return z3_ctx.int_sort();
+#else
 			return z3_ctx.bv_sort(BIT_WIDTH);
+#endif
 		}
 		break;
 	}
@@ -1084,13 +1098,21 @@ z3::sort Encode::llvmTy_to_z3Ty(const Type *typ) {
 		assert(0 && "couldn't handle Function type!");
 		break;
 	case Type::StructTyID:
+#if INT_ARITHMETIC
+		return z3_ctx.int_sort();
+#else
 		return z3_ctx.bv_sort(BIT_WIDTH);
+#endif
 		break;
 	case Type::ArrayTyID:
 		assert(0 && "couldn't handle Array type!");             //must
 		break;
 	case Type::PointerTyID:
+#if INT_ARITHMETIC
+		return z3_ctx.int_sort();
+#else
 		return z3_ctx.bv_sort(BIT_WIDTH);
+#endif
 	case Type::VectorTyID:
 		assert(0 && "couldn't handle Vector type!");
 		break;
@@ -1103,8 +1125,11 @@ z3::sort Encode::llvmTy_to_z3Ty(const Type *typ) {
 		assert(0 && "No such type!");
 		break;
 	}
-
+#if INT_ARITHMETIC
+	return z3_ctx.int_sort();
+#else
 	return z3_ctx.bv_sort(BIT_WIDTH);
+#endif
 }        //
 
 void Encode::buildMemoryModelFormula() {
