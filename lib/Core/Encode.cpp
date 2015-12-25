@@ -64,7 +64,7 @@
 #define BUFFERSIZE 300
 #define BIT_WIDTH 64
 #define POINT_BIT_WIDTH 64
-#define INT_ARITHMETIC 1
+#define INT_ARITHMETIC 0
 
 
 using namespace llvm;
@@ -338,7 +338,7 @@ void Encode::check_if() {
 					if (curr->eventId > temp->eventId)
 						constraint = ifFormula[j].second;
 				} else
-					constraint = implies(tempIf < currIf, ifFormula[j].second);
+//					constraint = implies(tempIf < currIf, ifFormula[j].second);
 				z3_solver.add(constraint);
 			}
 			//statics
@@ -346,6 +346,7 @@ void Encode::check_if() {
 			//solving
 			check_result result;
 			struct timeval start, finish;
+
 			gettimeofday(&start, NULL);
 			try {
 				//statics
@@ -975,9 +976,9 @@ void Encode::buildifAndassert() {
 	unsigned int totalBrEvent = trace->brEvent.size();
 	for (unsigned int i = 0; i < totalBrEvent; i++) {
 		event = trace->brEvent[i];
+//		cerr << "br : " << trace->brSymbolicExpr[i] <<"\n";
 		res = kq->getZ3Expr(trace->brSymbolicExpr[i]);
 		if(event->isConditionIns == true){
-//			cerr << "br : " << trace->brSymbolicExpr[i] <<"\n";
 //			event->inst->inst->dump();
 //			string fileName = event->inst->info->file;
 //			unsigned line = event->inst->info->line;

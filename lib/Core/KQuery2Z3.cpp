@@ -28,7 +28,7 @@ using namespace z3;
 
 #define EPSILON 0.00001
 #define BIT_WIDTH 64
-#define INT_ARITHMETIC 1
+#define INT_ARITHMETIC 0
 
 //constructor
 KQuery2Z3::KQuery2Z3(std::vector<ref<Expr> > &_kqueryExpr, z3::context& _z3_ctx) :
@@ -171,7 +171,12 @@ z3::expr KQuery2Z3::eachExprToZ3(ref<Expr> &ele) {
 		if (re->getWidth() == Expr::Bool) {
 			res = z3_ctx.bool_const(varName.c_str());
 		} else {
-			res = z3_ctx.constant(varName.c_str(), z3_ctx.bv_sort(BIT_WIDTH));
+#if INT_ARITHMETIC
+				res = z3_ctx.constant(varName.c_str(), z3_ctx.int_sort());
+#else
+				res = z3_ctx.constant(varName.c_str(), z3_ctx.bv_sort(BIT_WIDTH));
+#endif
+
 		}
 		return res;
 	}
@@ -238,9 +243,7 @@ z3::expr KQuery2Z3::eachExprToZ3(ref<Expr> &ele) {
 //			ele.get()->dump();
 			try {
 #if INT_ARITHMETIC
-
 			z3::expr temp = z3::to_expr(z3_ctx, Z3_mk_real2int(z3_ctx, src));
-
 #else
 			z3::expr temp = z3::to_expr(z3_ctx, Z3_mk_real2int(z3_ctx, src));
 			z3::expr vecTemp = z3::to_expr(z3_ctx,
@@ -249,24 +252,13 @@ z3::expr KQuery2Z3::eachExprToZ3(ref<Expr> &ele) {
 			if (ee->width == Expr::Bool) {
 				//handle double->bool the special
 #if INT_ARITHMETIC
-//				z3::expr vecTemp = z3::to_expr(z3_ctx,
-//						Z3_mk_int2bv(z3_ctx, BIT_WIDTH, temp));
-//				res = z3::ite(
-//						z3::to_expr(z3_ctx,
-//								Z3_mk_extract(z3_ctx, 0, 0, vecTemp)),
-//						z3_ctx.int_val(1), z3_ctx.int_val(0));
-				res = z3::ite(temp, z3_ctx.int_val(1), z3_ctx.int_val(0));
+				res = z3::ite(temp, z3_ctx.bool_val(1), z3_ctx.bool_val(0));
 #else
 				res = z3::ite(
 						z3::to_expr(z3_ctx,
 								Z3_mk_extract(z3_ctx, 0, 0, vecTemp)),
 								z3_ctx.bv_val(1, BIT_WIDTH), z3_ctx.bv_val(0, BIT_WIDTH));
 #endif
-//				if (Z3_TRUE == Z3_algebraic_is_zero(z3_ctx, src)) {
-//					res = z3_ctx.bool_val(false);
-//				} else {
-//					res = z3_ctx.bool_val(true);
-//				}
 			} else {
 #if INT_ARITHMETIC
 				res = temp;
@@ -283,11 +275,6 @@ z3::expr KQuery2Z3::eachExprToZ3(ref<Expr> &ele) {
 			if (ee->width == Expr::Bool) {
 				//handle int->bool the special
 #if INT_ARITHMETIC
-//				z3::expr vecTemp = z3::to_expr(z3_ctx,
-//						Z3_mk_int2bv(z3_ctx, BIT_WIDTH, src));
-//				res = z3::ite(
-//						z3::to_expr(z3_ctx, Z3_mk_extract(z3_ctx, 0, 0, vecTemp)),
-//						z3_ctx.int_val(1), z3_ctx.int_val(0));
 				res = z3::ite(src, z3_ctx.int_val(1), z3_ctx.int_val(0));
 #else
 				res = z3::ite(
@@ -346,7 +333,7 @@ z3::expr KQuery2Z3::eachExprToZ3(ref<Expr> &ele) {
 
 #else
 			z3::expr temp = to_expr(z3_ctx, Z3_mk_bv2int(z3_ctx, src, true));
-			z3::expr realTemp = to_expr(z3_ctx, Z3_mk_int2real(z3_ctx, src));
+			z3::expr realTemp = to_expr(z3_ctx, Z3_mk_int2real(z3_ctx, temp));
 #endif
 			res = realTemp;
 			} catch (z3::exception &ex) {
@@ -878,6 +865,7 @@ z3::expr KQuery2Z3::eachExprToZ3(ref<Expr> &ele) {
 
 	}
 	std::cerr << "end of switch\n";
+	return res;
 }
 
 void KQuery2Z3::printZ3AndKqueryExpr() {
