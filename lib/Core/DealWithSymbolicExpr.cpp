@@ -461,10 +461,10 @@ bool DealWithSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::stri
 			break;
 		}
 	}
-	if(branch){
-		fillterTrace(trace, RelatedSymbolicExpr);
+	if (branch) {
+//		fillterTrace(trace, RelatedSymbolicExpr);
 		return true;
-	}else {
+	} else {
 		return false;
 	}
 }

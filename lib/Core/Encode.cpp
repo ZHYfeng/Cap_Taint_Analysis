@@ -338,7 +338,7 @@ void Encode::check_if() {
 					if (curr->eventId > temp->eventId)
 						constraint = ifFormula[j].second;
 				} else
-//					constraint = implies(tempIf < currIf, ifFormula[j].second);
+					constraint = implies(tempIf < currIf, ifFormula[j].second);
 				z3_solver.add(constraint);
 			}
 			//statics
