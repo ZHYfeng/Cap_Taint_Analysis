@@ -251,7 +251,8 @@ void Encode::check_if() {
 		gettimeofday(&start, NULL);
 
 		bool branch = filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
-
+//		bool
+		branch = true;
 		gettimeofday(&finish, NULL);
 		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;

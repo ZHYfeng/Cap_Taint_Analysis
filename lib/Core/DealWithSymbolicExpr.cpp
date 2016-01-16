@@ -10,6 +10,8 @@
 
 #define DEBUG 0
 
+#define OP1 1
+
 #include "DealWithSymbolicExpr.h"
 #include "llvm/IR/Instruction.h"
 #include <sstream>
@@ -107,7 +109,7 @@ void DealWithSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> Rela
 	for (std::vector<ref<Expr> >::iterator it = kQueryExpr.begin(), ie =
 			kQueryExpr.end(); it != ie; ++it) {
 		varName = getVarName(it->get()->getKid(1));
-		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end()) {
+		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end() || OP1) {
 			usefulkQueryExpr.push_back(*it);
 		}
 	}
@@ -119,7 +121,7 @@ void DealWithSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> Rela
 	for (std::map<std::string, std::vector<Event *> >::iterator nit =
 			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
 		varName = nit->first;
-		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end()) {
+		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end() || OP1) {
 			usefulReadSet.insert(*nit);
 		}
 	}
@@ -131,7 +133,7 @@ void DealWithSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> Rela
 	for (std::map<std::string, std::vector<Event *> >::iterator nit =
 			writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
 		varName = nit->first;
-		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end()) {
+		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end() || OP1) {
 			usefulWriteSet.insert(*nit);
 		}
 	}
@@ -143,7 +145,7 @@ void DealWithSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> Rela
 	for (std::map<std::string, llvm::Constant*>::iterator nit =
 			global_variable_initializer.begin(), nie = global_variable_initializer.end(); nit != nie; ++nit) {
 		varName = nit->first;
-		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end()) {
+		if (RelatedSymbolicExpr.find(varName) != RelatedSymbolicExpr.end() || OP1) {
 			useful_global_variable_initializer.insert(*nit);
 		}
 	}
@@ -154,7 +156,7 @@ void DealWithSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> Rela
 		if ((*currentEvent)->isGlobal == true) {
 			if ((*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Load
 					|| (*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Store) {
-				if (RelatedSymbolicExpr.find((*currentEvent)->varName) == RelatedSymbolicExpr.end()) {
+				if (RelatedSymbolicExpr.find((*currentEvent)->varName) == RelatedSymbolicExpr.end() && !OP1) {
 					(*currentEvent)->usefulGlobal = false;
 				} else {
 					(*currentEvent)->usefulGlobal = true;
@@ -290,7 +292,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 	for (std::map<std::string, std::vector<Event *> >::iterator nit =
 			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
 		varName = nit->first;
-		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end()) {
+		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulReadSet.insert(*nit);
 			if (varThread.find(varName) == varThread.end()) {
 				varThread[varName] = (*(nit->second.begin()))->threadId;
@@ -322,7 +324,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 	for (std::map<std::string, std::vector<Event *> >::iterator nit =
 			writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
 		varName = nit->first;
-		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end()) {
+		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulWriteSet.insert(*nit);
 			if (varThread.find(varName) == varThread.end()) {
 				varThread[varName] = (*(nit->second.begin()))->threadId;
@@ -367,7 +369,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 	for (std::map<std::string, llvm::Constant*>::iterator nit =
 			global_variable_initializer.begin(), nie = global_variable_initializer.end(); nit != nie; ++nit) {
 		varName = nit->first;
-		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end()) {
+		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulGlobal_variable_initializer.insert(*nit);
 		}
 	}
@@ -384,7 +386,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 		if ((*currentEvent)->isGlobal == true) {
 			if ((*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Load
 					|| (*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Store) {
-				if (allRelatedSymbolicExpr.find((*currentEvent)->varName) == allRelatedSymbolicExpr.end()) {
+				if (allRelatedSymbolicExpr.find((*currentEvent)->varName) == allRelatedSymbolicExpr.end() && !OP1) {
 					(*currentEvent)->isGlobal = false;
 					(*currentEvent)->usefulGlobal = false;
 				} else {
@@ -402,7 +404,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 	for (std::vector<ref<klee::Expr> >::iterator nit =
 			rwSymbolicExpr.begin(), nie = rwSymbolicExpr.end(); nit != nie; ++nit) {
 		varName = getVarName((*nit)->getKid(1));
-		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end()) {
+		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulRwSymbolicExpr.push_back(*nit);
 		}
 	}
