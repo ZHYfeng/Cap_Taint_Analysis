@@ -10,7 +10,7 @@
 
 #define DEBUG 0
 
-#define OP1 1
+#define OP1 0
 
 #include "DealWithSymbolicExpr.h"
 #include "llvm/IR/Instruction.h"
