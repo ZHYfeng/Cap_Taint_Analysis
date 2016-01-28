@@ -250,8 +250,8 @@ void Encode::check_if() {
 		struct timeval start, finish;
 		gettimeofday(&start, NULL);
 
-		bool branch = filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
-//		bool
+//		bool branch = filter.filterUselessWithSet(trace, trace->brRelatedSymbolicExpr[i]);
+		bool branch = true;
 //		branch = true;
 		gettimeofday(&finish, NULL);
 		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec

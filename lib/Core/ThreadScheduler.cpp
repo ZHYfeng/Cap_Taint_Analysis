@@ -8,7 +8,7 @@
 #include "ThreadScheduler.h"
 #include "Executor.h"
 #include "klee/ExecutionState.h"
-#define MAXINST 1000
+#define MAXINST 100
 
 using namespace::std;
 
