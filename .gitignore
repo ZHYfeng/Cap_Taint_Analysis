@@ -30,3 +30,4 @@
 *.bc
 *.ll
 *.dir
+/README.md
