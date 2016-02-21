@@ -33,10 +33,6 @@
 using namespace llvm;
 using namespace klee;
 
-/// \todo Almost all of the demands in this file should be replaced
-/// with terminateState calls.
-
-///
 
 // FIXME: We are more or less committed to requiring an intrinsic
 // library these days. We can move some of this stuff there,
@@ -139,6 +135,8 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
 		add("pthread_self", handlePThreadSelf, true),
 
 		add("valloc", handleValloc, true),
+
+		add("make_taint", handleMakeTaint, false),
 #undef addDNR
 #undef add  
 		};
@@ -841,4 +839,56 @@ void SpecialFunctionHandler::handleValloc(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	assert(arguments.size() == 1 && "invalid number of arguments to valloc");
 	executor.executeAlloc(state, arguments[0], false, target);
+}
+
+
+// TODO make taint
+void SpecialFunctionHandler::handleMakeTaint(ExecutionState &state,
+		KInstruction *target, std::vector<ref<Expr> > &arguments) {
+	std::string name;
+
+
+	if (arguments.size() == 2) {
+		name = "unnamed";
+	} else {
+		// FIXME: Should be a user.err, not an assert.
+		assert(
+				arguments.size() == 3
+						&& "invalid number of arguments to klee_make_symbolic");
+		name = readStringAtAddress(state, arguments[2]);
+	}
+	Executor::ExactResolutionList rl;
+	executor.resolveExact(state, arguments[0], rl, "make_symbolic");
+
+	for (Executor::ExactResolutionList::iterator it = rl.begin(), ie = rl.end();
+			it != ie; ++it) {
+		const MemoryObject *mo = it->first.first;
+		mo->setName(name);
+
+		const ObjectState *old = it->first.second;
+		ExecutionState *s = it->second;
+
+		if (old->readOnly) {
+			executor.terminateStateOnError(*s,
+					"cannot make readonly object symbolic", "user.err");
+			return;
+		}
+
+		// FIXME: Type coercion should be done consistently somewhere.
+		bool res;
+		bool success = executor.solver->mustBeTrue(*s,
+				EqExpr::create(
+						ZExtExpr::create(arguments[1],
+								Context::get().getPointerWidth()),
+						mo->getSizeExpr()), res);
+		assert(success && "FIXME: Unhandled solver failure");
+
+		if (res) {
+			executor.executeMakeSymbolic(*s, mo, name);
+		} else {
+			executor.terminateStateOnError(*s,
+					"wrong size given to klee_make_symbolic[_name]",
+					"user.err");
+		}
+	}
 }

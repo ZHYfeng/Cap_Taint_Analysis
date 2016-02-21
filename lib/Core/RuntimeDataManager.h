@@ -32,6 +32,7 @@ public:
 	unsigned uunSatBranch;
 	double runningCost;
 	double solvingCost;
+	double taintCost;
 	double satCost;
 	double unSatCost;
 

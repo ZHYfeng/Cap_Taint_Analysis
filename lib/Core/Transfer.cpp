@@ -49,12 +49,11 @@ Constant* Transfer::expr2Constant(Expr* expr, Type* type) {
 }
 
 Transfer::Transfer() {
-	// TODO Auto-generated constructor stub
 
 }
 
 Transfer::~Transfer() {
-	// TODO Auto-generated destructor stub
+
 }
 
 } /* namespace klee */

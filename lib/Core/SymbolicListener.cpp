@@ -557,7 +557,6 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 
 //消息响应函数，在被测程序解释执行之后调用
 void SymbolicListener::afterRunMethodAsMain() {
-	//TODO: Add Encoding Feature
 	symbolicMap.clear();
 	addressSymbolicMap.clear();
 	assertMap.clear();

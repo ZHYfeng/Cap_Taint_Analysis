@@ -22,6 +22,7 @@ public:
 	enum listenerKind {
 		PSOListenerKind,
 		SymbolicListenerKind,
+		TaintListenerKind,
 		DebugerListenerKind
 	};
 

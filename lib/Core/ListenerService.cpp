@@ -12,11 +12,15 @@
 #include "PSOListener.h"
 #include "SymbolicListener.h"
 #include "Encode.h"
+#include "TaintListener.h"
 
 namespace klee {
 
 ListenerService::ListenerService(Executor* executor) {
 	runState = 0;
+	PSOlistener = new PSOlistener();
+	Symbliclistener = new Symbliclistener();
+	Taintlistener = new Taintlistener();
 }
 
 void ListenerService::pushListener(BitcodeListener* bitcodeListener) {
@@ -89,16 +93,14 @@ void ListenerService::startControl(Executor* executor){
 	runState = rdManager.runState;
 	switch (runState) {
 	case 0: {
-		BitcodeListener* listener = new PSOListener(executor, &rdManager);
-		pushListener(listener);
+		pushListener(PSOlistener);
 		executor->executionNum++;
 		gettimeofday(&start, NULL);
 		break;
 	}
 	case 1: {
-		BitcodeListener* listener = new SymbolicListener(executor, &rdManager);
-		pushListener(listener);
-		rdManager.runState = 0;
+		pushListener(Symbliclistener);
+		rdManager.runState = 2;
 		if (executor->prefix) {
 			executor->prefix->reuse();
 		}
@@ -106,8 +108,17 @@ void ListenerService::startControl(Executor* executor){
 		break;
 	}
 	case 2: {
+		pushListener(Taintlistener);
+		rdManager.runState = 0;
+		if (executor->prefix) {
+			executor->prefix->reuse();
+		}
+		gettimeofday(&start, NULL);
 		break;
 	}
+	case 3: {
+		break;
+		}
 	default: {
 		break;
 	}
@@ -131,7 +142,6 @@ void ListenerService::endControl(Executor* executor){
 		if (encode.verify()) {
 			encode.check_if();
 		}
-		executor->getNewPrefix();
 		gettimeofday(&finish, NULL);
 		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
@@ -139,6 +149,14 @@ void ListenerService::endControl(Executor* executor){
 		break;
 	}
 	case 2: {
+		popListener();
+		//TODO: PTS
+
+		executor->getNewPrefix();
+		gettimeofday(&finish, NULL);
+		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+		rdManager.taintCost += cost;
 		break;
 	}
 	default: {

@@ -13,7 +13,6 @@ using namespace::std;
 namespace klee {
 
 ThreadList::ThreadList() : threadNum(0) {
-	// TODO Auto-generated constructor stub
 	allThreads.resize(20, 0);
 	index.reserve(20);
 	//thread id从1开始，根据thread id分配数组元素
@@ -21,7 +20,7 @@ ThreadList::ThreadList() : threadNum(0) {
 }
 
 ThreadList::~ThreadList() {
-	// TODO Auto-generated destructor stub
+
 }
 
 

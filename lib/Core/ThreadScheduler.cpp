@@ -37,12 +37,11 @@ ThreadScheduler* getThreadSchedulerByType(ThreadScheduler::ThreadSchedulerType t
 }
 
 ThreadScheduler::ThreadScheduler() {
-	// TODO Auto-generated constructor stub
 
 }
 
 ThreadScheduler::~ThreadScheduler() {
-	// TODO Auto-generated destructor stub
+
 }
 
 RRThreadScheduler::RRThreadScheduler() {

@@ -852,7 +852,6 @@ void PSOListener::instructionExecuted(ExecutionState &state, KInstruction *ki) {
 
 //消息响应函数，在被测程序解释执行之后调用
 void PSOListener::afterRunMethodAsMain() {
-	//TODO: Add Encoding Feature
 	Trace* trace = rdManager->getCurrentTrace();
 	unsigned allGlobal = 0;
 	if (executor->execStatus != Executor::SUCCESS) {

@@ -2989,7 +2989,7 @@ void Executor::run(ExecutionState &initialState) {
 		}
 
 		case Thread::MUTEX_BLOCKED: {
-			//死锁检测可以完善
+			//TODO:　死锁检测可以完善
 			Thread* origin = thread;
 			do {
 				string errorMsg;
