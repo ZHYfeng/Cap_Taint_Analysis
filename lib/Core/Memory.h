@@ -199,6 +199,7 @@ public:
   const MemoryObject *getObject() const { return object; }
 
   void setReadOnly(bool ro) { readOnly = ro; }
+  void setTaint(bool ta) { isTaint = ta; }
 
   // make contents all concrete and zero
   void initializeToZero();

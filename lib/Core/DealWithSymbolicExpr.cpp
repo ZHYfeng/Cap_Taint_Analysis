@@ -80,6 +80,25 @@ void DealWithSymbolicExpr::resolveSymbolicExpr(ref<klee::Expr> value,
 	}
 }
 
+void DealWithSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value,
+		std::set<ref<klee::Expr> >* relatedSymbolicExpr) {
+	if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
+		if (relatedSymbolicExpr->find(value) == relatedSymbolicExpr->end()) {
+			relatedSymbolicExpr->insert(value);
+		}
+		return;
+	} else {
+		unsigned kidsNum = value->getNumKids();
+		if (kidsNum == 2 && value->getKid(0) == value->getKid(1)) {
+			resolveTaintExpr(value->getKid(0), relatedSymbolicExpr);
+		} else {
+			for (unsigned int i = 0; i < kidsNum; i++) {
+				resolveTaintExpr(value->getKid(i), relatedSymbolicExpr);
+			}
+		}
+	}
+}
+
 void DealWithSymbolicExpr::addExprToSet(std::set<std::string>* Expr,
 		std::set<std::string>* relatedSymbolicExpr) {
 
