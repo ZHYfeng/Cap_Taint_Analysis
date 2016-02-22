@@ -110,7 +110,7 @@ ObjectState::ObjectState(const MemoryObject *mo)
     updates(0, 0),
     size(mo->size),
     readOnly(false),
-	isFloat(false) {
+	isTaint(false) {
   mo->refCount++;
   if (!UseConstantArrays) {
     // FIXME: Leaked.
@@ -128,7 +128,7 @@ ObjectState::ObjectState(const MemoryObject *mo, const Array *array)
     object(mo),
     concreteStore(new uint8_t[mo->size]),
     concreteMask(0),
-	isFloat(false),
+	isTaint(false),
     flushMask(0),
     knownSymbolics(0),
     updates(array, 0),
@@ -145,7 +145,7 @@ ObjectState::ObjectState(unsigned size, const Array *array)
     concreteStore(new uint8_t[size]),
     concreteMask(0),
     flushMask(0),
-	isFloat(false),
+	isTaint(false),
     knownSymbolics(0),
     updates(array, 0),
     size(size),
@@ -162,7 +162,7 @@ ObjectState::ObjectState(const ObjectState &os)
     concreteMask(os.concreteMask ? new BitArray(*os.concreteMask, os.size) : 0),
     flushMask(os.flushMask ? new BitArray(*os.flushMask, os.size) : 0),
     knownSymbolics(0),
-	isFloat(os.isFloat),
+	isTaint(os.isTaint),
     updates(os.updates),
     size(os.size),
     readOnly(false) {

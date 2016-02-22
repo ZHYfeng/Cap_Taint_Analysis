@@ -15,11 +15,9 @@ Barrier::Barrier(string name, unsigned count)
 	: name(name),
 	  count(count), 
 	  current(0) {
-	// TODO Auto-generated constructor stub
 }
 
 Barrier::~Barrier() {
-	// TODO Auto-generated destructor stub
 }
 
 void Barrier::wait(unsigned threadId) {

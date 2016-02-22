@@ -842,53 +842,9 @@ void SpecialFunctionHandler::handleValloc(ExecutionState &state,
 }
 
 
-// TODO make taint
 void SpecialFunctionHandler::handleMakeTaint(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
-	std::string name;
 
-
-	if (arguments.size() == 2) {
-		name = "unnamed";
-	} else {
-		// FIXME: Should be a user.err, not an assert.
-		assert(
-				arguments.size() == 3
-						&& "invalid number of arguments to klee_make_symbolic");
-		name = readStringAtAddress(state, arguments[2]);
-	}
-	Executor::ExactResolutionList rl;
-	executor.resolveExact(state, arguments[0], rl, "make_symbolic");
-
-	for (Executor::ExactResolutionList::iterator it = rl.begin(), ie = rl.end();
-			it != ie; ++it) {
-		const MemoryObject *mo = it->first.first;
-		mo->setName(name);
-
-		const ObjectState *old = it->first.second;
-		ExecutionState *s = it->second;
-
-		if (old->readOnly) {
-			executor.terminateStateOnError(*s,
-					"cannot make readonly object symbolic", "user.err");
-			return;
-		}
-
-		// FIXME: Type coercion should be done consistently somewhere.
-		bool res;
-		bool success = executor.solver->mustBeTrue(*s,
-				EqExpr::create(
-						ZExtExpr::create(arguments[1],
-								Context::get().getPointerWidth()),
-						mo->getSizeExpr()), res);
-		assert(success && "FIXME: Unhandled solver failure");
-
-		if (res) {
-			executor.executeMakeSymbolic(*s, mo, name);
-		} else {
-			executor.terminateStateOnError(*s,
-					"wrong size given to klee_make_symbolic[_name]",
-					"user.err");
-		}
-	}
+	assert( arguments.size() == 2 && "invalid number of arguments to klee_make_taint");
+	//doing nothing, and really do it at TaintListener.
 }

@@ -39,15 +39,18 @@ public:
 private:
 	Executor* executor;
 	RuntimeDataManager* rdManager;
+	DealWithSymbolicExpr filter;
 	std::vector<Event*>::iterator currentEvent, endEvent;
+	//此Map更新有两处，Load、某些函数。
+	std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
+	std::map<std::string, ref<Expr> > symbolicMap;
 
 private:
 
 	//add by hy
-	ref<Expr> manualMakeTaint(ExecutionState& state, std::string name,
-			unsigned size, bool isFloat);
-	ref<Expr> readExpr(ExecutionState &state, ref<Expr> address,
-			Expr::Width size);
+	ref<Expr> manualMakeTaintSymbolic(ExecutionState& state, std::string name, unsigned size, bool isTaint);
+	void manualMakeTaint(ref<Expr> value, bool isTaint);
+	ref<Expr> readExpr(ExecutionState &state, ref<Expr> address, Expr::Width size);
 
 };
 

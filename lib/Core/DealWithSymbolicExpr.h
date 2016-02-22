@@ -31,6 +31,7 @@ public:
 	bool isRelated(std::string varName);
 	std::string getVarName(ref<Expr> value);
 	std::string getFullName(ref<Expr> value);
+	ref<Expr> getTaintExpr(ref<Expr> value);
 
 };
 

@@ -472,6 +472,11 @@ bool DealWithSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::stri
 	}
 }
 
+ref<Expr> DealWithSymbolicExpr::getTaintExpr(ref<Expr> value) {
+	//TODO: transform int taint tag expr
+	return value;
+}
+
 }
 
 #endif /* LIB_CORE_DEALWITHSYMBOLIC_C_ */

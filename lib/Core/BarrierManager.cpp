@@ -14,12 +14,10 @@ using namespace::std;
 namespace klee {
 
 BarrierManager::BarrierManager() {
-	// TODO Auto-generated constructor stub
 
 }
 
 BarrierManager::~BarrierManager() {
-	// TODO Auto-generated destructor stub
 	clear();
 }
 

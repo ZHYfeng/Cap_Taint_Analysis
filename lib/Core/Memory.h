@@ -177,7 +177,7 @@ public:
   unsigned size;
 
   bool readOnly;
-  bool isFloat;
+  bool isTaint;
 
 public:
   /// Create a new object state for the given memory object with concrete

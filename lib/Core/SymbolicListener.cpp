@@ -39,7 +39,6 @@ using namespace std;
 using namespace llvm;
 
 #define EVENTS_DEBUG 0
-
 #define PTR 0
 #define DEBUGSTRCPY 0
 #define DEBUGSYMBOLIC 0
@@ -283,7 +282,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 							}
 							executor->evalAgainst(ki, j, thread, svalue);
 						} else {
-							ref<Expr> svalue = (*currentEvent)->value.back();
+							ref<Expr> svalue = (*currentEvent)->value[j-1];
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
 							} else 	if (id == Type::PointerTyID) {
@@ -296,7 +295,6 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 							assert(0 && "store value is symbolic and type is other");
 						}
 					}
-					(*currentEvent)->value.pop_back();
 				}
 			}
 			break;
