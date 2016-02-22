@@ -845,6 +845,6 @@ void SpecialFunctionHandler::handleValloc(ExecutionState &state,
 void SpecialFunctionHandler::handleMakeTaint(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 
-	assert( arguments.size() == 1 && "invalid number of arguments to klee_make_taint");
+	assert( arguments.size() == 2 && "invalid number of arguments to klee_make_taint");
 	//doing nothing, and really do it at TaintListener.
 }

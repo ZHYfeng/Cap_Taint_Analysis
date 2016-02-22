@@ -48,7 +48,7 @@ private:
 private:
 
 	//add by hy
-	ref<Expr> manualMakeTaintSymbolic(ExecutionState& state, std::string name, unsigned size);
+	ref<Expr> manualMakeTaintSymbolic(ExecutionState& state, std::string name, unsigned size, bool isTaint);
 	void manualMakeTaint(ref<Expr> value, bool isTaint);
 	ref<Expr> readExpr(ExecutionState &state, ref<Expr> address, Expr::Width size);
 

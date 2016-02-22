@@ -83,7 +83,7 @@
 #define STDC_HEADERS 1
 
 /* klee-uclibc is supported */
-#define SUPPORT_KLEE_UCLIBC 1
+/* #undef SUPPORT_KLEE_UCLIBC */
 
 /* Supporting metaSMT API */
 /* #undef SUPPORT_METASMT */

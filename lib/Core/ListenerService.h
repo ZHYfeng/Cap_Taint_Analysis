@@ -23,6 +23,7 @@ private:
 	RuntimeDataManager rdManager;
 	unsigned runState;
 	struct timeval start, finish;
+	BitcodeListener* PSOlistener, Symbliclistener, Taintlistener;
 
 
 public:
