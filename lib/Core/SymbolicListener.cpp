@@ -474,41 +474,41 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 				kleeBr = true;
 			} else if (f->getName().startswith("klee_overshift_check")) {
 				kleeBr = true;
-			} else if (f->getName() == "strcpy") {
-				//地址可能还有问题
-				ref<Expr> destAddress = executor->eval(ki, 1, state.currentThread).value;
-//				ref<Expr> scrAddress = executor->eval(ki, 0,
-//						state.currentThread).value;
-//				ObjectPair scrop;
-				ObjectPair destop;
-//				getMemoryObject(scrop, state, scrAddress);
-				executor->getMemoryObject(destop, state, destAddress);
-				const ObjectState* destos = destop.second;
-				const MemoryObject* destmo = destop.first;
-//				std::cerr<<destAddress<<std::endl;
-//				std::cerr<<destmo->address<<std::endl;
-//				std::cerr<<"destmo->size : "<<destmo->size<<std::endl;
-				Expr::Width size = 8;
-				for (unsigned i = 0; i < (*currentEvent)->implicitGlobalVar.size(); i++) {
-//					std::cerr<<"dest"<<std::endl;
-					ref<Expr> address = AddExpr::create(destAddress, ConstantExpr::create(i, BIT_WIDTH));
-					ref<Expr> value = destos->read(destmo->getOffsetExpr(address), size);
-//					std::cerr<<"value : "<<value<<std::endl;
-//					std::cerr<<"value : "<<value<<std::endl;
-					if (executor->isGlobalMO(destmo)) {
-						ref<Expr> value2 = manualMakeSymbolic(state,
-								(*currentEvent)->implicitGlobalVar[i], size, false);
-						ref<Expr> value1 = value;
-						ref<Expr> constraint = EqExpr::create(value1, value2);
-						trace->storeSymbolicExpr.push_back(constraint);
-//						cerr << "constraint : " << constraint << "\n";
-//						cerr << "Store Map varName : " << (*currentEvent)->varName << "\n";
-//						cerr << "Store Map value : " << value << "\n";
-					}
-					if (value->isZero()) {
-						break;
-					}
-				}
+//			} else if (f->getName() == "strcpy") {
+//				//地址可能还有问题
+//				ref<Expr> destAddress = executor->eval(ki, 1, state.currentThread).value;
+////				ref<Expr> scrAddress = executor->eval(ki, 0,
+////						state.currentThread).value;
+////				ObjectPair scrop;
+//				ObjectPair destop;
+////				getMemoryObject(scrop, state, scrAddress);
+//				executor->getMemoryObject(destop, state, destAddress);
+//				const ObjectState* destos = destop.second;
+//				const MemoryObject* destmo = destop.first;
+////				std::cerr<<destAddress<<std::endl;
+////				std::cerr<<destmo->address<<std::endl;
+////				std::cerr<<"destmo->size : "<<destmo->size<<std::endl;
+//				Expr::Width size = 8;
+//				for (unsigned i = 0; i < (*currentEvent)->implicitGlobalVar.size(); i++) {
+////					std::cerr<<"dest"<<std::endl;
+//					ref<Expr> address = AddExpr::create(destAddress, ConstantExpr::create(i, BIT_WIDTH));
+//					ref<Expr> value = destos->read(destmo->getOffsetExpr(address), size);
+////					std::cerr<<"value : "<<value<<std::endl;
+////					std::cerr<<"value : "<<value<<std::endl;
+//					if (executor->isGlobalMO(destmo)) {
+//						ref<Expr> value2 = manualMakeSymbolic(state,
+//								(*currentEvent)->implicitGlobalVar[i], size, false);
+//						ref<Expr> value1 = value;
+//						ref<Expr> constraint = EqExpr::create(value1, value2);
+//						trace->storeSymbolicExpr.push_back(constraint);
+////						cerr << "constraint : " << constraint << "\n";
+////						cerr << "Store Map varName : " << (*currentEvent)->varName << "\n";
+////						cerr << "Store Map value : " << value << "\n";
+//					}
+//					if (value->isZero()) {
+//						break;
+//					}
+//				}
 			} else if (f->getName() == "pthread_create") {
 				ref<Expr> pthreadAddress = executor->eval(ki, 1, state.currentThread).value;
 				ObjectPair pthreadop;

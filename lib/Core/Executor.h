@@ -102,6 +102,7 @@ class Executor: public Interpreter {
 	friend class ListenerService;
 	friend class PSOListener;
 	friend class SymbolicListener;
+	friend class TaintListener;
 	friend class CondManager;
 
 public:

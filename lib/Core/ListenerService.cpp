@@ -18,9 +18,6 @@ namespace klee {
 
 ListenerService::ListenerService(Executor* executor) {
 	runState = 0;
-	PSOlistener = new PSOlistener();
-	Symbliclistener = new Symbliclistener();
-	Taintlistener = new Taintlistener();
 }
 
 void ListenerService::pushListener(BitcodeListener* bitcodeListener) {
@@ -93,13 +90,15 @@ void ListenerService::startControl(Executor* executor){
 	runState = rdManager.runState;
 	switch (runState) {
 	case 0: {
+		BitcodeListener* PSOlistener = new PSOListener(executor, &rdManager);
 		pushListener(PSOlistener);
 		executor->executionNum++;
 		gettimeofday(&start, NULL);
 		break;
 	}
 	case 1: {
-		pushListener(Symbliclistener);
+		BitcodeListener* Symboliclistener = new SymbolicListener(executor, &rdManager);
+		pushListener(Symboliclistener);
 		rdManager.runState = 2;
 		if (executor->prefix) {
 			executor->prefix->reuse();
@@ -108,6 +107,7 @@ void ListenerService::startControl(Executor* executor){
 		break;
 	}
 	case 2: {
+		BitcodeListener* Taintlistener = new TaintListener(executor, &rdManager);
 		pushListener(Taintlistener);
 		rdManager.runState = 0;
 		if (executor->prefix) {
