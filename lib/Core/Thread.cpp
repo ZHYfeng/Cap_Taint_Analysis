@@ -45,11 +45,6 @@ StackFrame::~StackFrame() {
 
 unsigned Thread::nextThreadId = 1;
 
-Thread::Thread() {
-	// TODO Auto-generated constructor stub
-
-}
-
 Thread::Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpace, KFunction* kf)
 	: pc(kf->instructions),
 	  prevPC(pc),
@@ -58,7 +53,9 @@ Thread::Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpa
 	  parentThread(parentThread),
 	  addressSpace(addressSpace),
 	  threadState(Thread::RUNNABLE) {
-
+	for(unsigned i = 0; i < 5; i++) {
+		vectorClock.push_back(0);
+	}
 	stack.reserve(10);
 	pushFrame(0, kf);
 }
@@ -72,7 +69,9 @@ Thread::Thread(Thread& anotherThread, AddressSpace* addressSpace)
 	  addressSpace(addressSpace),
 	  threadState(anotherThread.threadState),
 	  stack(anotherThread.stack) {
-
+	for(unsigned i = 0; i < 5; i++) {
+		vectorClock.push_back(0);
+	}
 }
 
 Thread::~Thread() {

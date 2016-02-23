@@ -478,6 +478,7 @@ Thread* ExecutionState::createThread(KFunction *kf) {
 Thread* ExecutionState::createThread(KFunction *kf, unsigned threadId) {
 	if (threadId >= Thread::nextThreadId) {
 		Thread::nextThreadId = threadId + 1;
+		assert (Thread::nextThreadId <= 6 && "vector clock 只有5个");
 	}
 	Thread* newThread = new Thread(threadId, currentThread, &addressSpace, kf);
 	threadList.addThread(newThread);

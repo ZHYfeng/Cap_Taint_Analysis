@@ -26,14 +26,16 @@ private:
 public:
 	void fillterTrace(Trace* trace, std::set<std::string> allRelatedSymbolicExpr);
 	void filterUseless(Trace* trace);
+	void filterUselessByTaint(Trace* trace);
 	bool filterUselessWithSet(Trace* trace, std::set<std::string>* relatedSymbolicExpr);
 	void addExprToSet(std::set<std::string>* Expr, std::set<std::string>* relatedSymbolicExpr);
+	void addExprToVector(std::vector<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr);
+	void addExprToVector(std::set<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr);
 	void resolveSymbolicExpr(ref<Expr> value, std::set<std::string>* relatedSymbolicExpr);
 	void resolveTaintExpr(ref<klee::Expr> value, std::set<ref<klee::Expr> >* relatedSymbolicExpr);
 	bool isRelated(std::string varName);
 	std::string getVarName(ref<Expr> value);
 	std::string getFullName(ref<Expr> value);
-	ref<Expr> getTaintExpr(ref<Expr> value);
 
 };
 

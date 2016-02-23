@@ -71,8 +71,8 @@ public:
 	ThreadState threadState;
 	static unsigned nextThreadId;
 	stack_ty stack;
+	std::vector<unsigned> vectorClock;
 public:
-	Thread();
 	Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpace, KFunction* kf);
 	Thread(Thread& anotherThread, AddressSpace* addressSpace);
 	virtual ~Thread();
@@ -110,6 +110,7 @@ public:
 
 	static unsigned getNextThreadId() {
 		unsigned threadId = nextThreadId++;
+		assert (nextThreadId <= 6 && "vector clock 只有5个");
 		return threadId;
 	}
 };

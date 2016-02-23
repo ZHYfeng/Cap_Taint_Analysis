@@ -58,6 +58,7 @@ public:
 	//by hy 2015.7.21
 	std::map<std::string, ref<Expr> > symbolicMap;
 	std::vector<ref<klee::Expr> > storeSymbolicExpr;
+	std::vector<ref<klee::Expr> > taintExpr;
 	std::vector<ref<klee::Expr> > rwSymbolicExpr;
 	std::vector<ref<klee::Expr> > brSymbolicExpr;
 	std::vector<ref<klee::Expr> > assertSymbolicExpr;
@@ -71,6 +72,10 @@ public:
 	std::vector<Event*> rwEvent;
 	std::vector<Event*> brEvent;
 	std::vector<Event*> assertEvent;
+
+	std::set<std::string> taintSymbolicExpr;
+	std::set<std::string> unTaintSymbolicExpr;
+	std::set<std::string> potentialTaintSymbolicExpr;
 
 	Trace();
 

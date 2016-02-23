@@ -111,6 +111,42 @@ void DealWithSymbolicExpr::addExprToSet(std::set<std::string>* Expr,
 	}
 }
 
+void DealWithSymbolicExpr::addExprToVector(std::vector<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr) {
+
+	for (std::vector<std::string>::iterator it =
+			Expr->begin(), ie = Expr->end(); it != ie; ++it) {
+		std::string varName =*it;
+		bool isFind = false;
+		for (std::vector<std::string>::iterator itt =
+				relatedSymbolicExpr->begin(), iee = relatedSymbolicExpr->end(); itt != iee; ++itt) {
+			if (*itt == varName) {
+				isFind = true;
+			}
+		}
+		if (!isFind) {
+			relatedSymbolicExpr->push_back(varName);
+		}
+	}
+}
+
+void DealWithSymbolicExpr::addExprToVector(std::set<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr) {
+
+	for (std::set<std::string>::iterator it =
+			Expr->begin(), ie = Expr->end(); it != ie; ++it) {
+		std::string varName =*it;
+		bool isFind = false;
+		for (std::vector<std::string>::iterator itt =
+				relatedSymbolicExpr->begin(), iee = relatedSymbolicExpr->end(); itt != iee; ++itt) {
+			if (*itt == varName) {
+				isFind = true;
+			}
+		}
+		if (!isFind) {
+			relatedSymbolicExpr->push_back(varName);
+		}
+	}
+}
+
 bool DealWithSymbolicExpr::isRelated(std::string varName) {
 	if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end()) {
 		return true;
@@ -491,9 +527,49 @@ bool DealWithSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::stri
 	}
 }
 
-ref<Expr> DealWithSymbolicExpr::getTaintExpr(ref<Expr> value) {
-	//TODO: transform int taint tag expr
-	return value;
+void DealWithSymbolicExpr::filterUselessByTaint(Trace* trace) {
+
+	std::set<std::string> &taintSymbolicExpr = trace->taintSymbolicExpr;
+	std::vector<std::string> taint;
+	for (std::set<std::string>::iterator it = taintSymbolicExpr.begin(),
+			ie = taintSymbolicExpr.end(); it != ie; it++) {
+		taint.push_back(*it);
+	}
+	std::set<std::string> &unTaintSymbolicExpr = trace->unTaintSymbolicExpr;
+	std::vector<std::string> unTaint;
+	for (std::set<std::string>::iterator it = unTaintSymbolicExpr.begin(),
+			ie = unTaintSymbolicExpr.end(); it != ie; it++) {
+		unTaint.push_back(*it);
+	}
+	std::set<std::string> &potentialTaintSymbolicExpr = trace->potentialTaintSymbolicExpr;
+	std::map<std::string, std::set<std::string>* > &varRelatedSymbolicExpr = trace->varRelatedSymbolicExpr;
+	std::string varName;
+
+	for (std::vector<std::string>::iterator it = taint.begin();
+			it != taint.end(); it++) {
+		varName = *it;
+		for (std::vector<std::string>::iterator itt = unTaint.begin();
+				itt != unTaint.end(); ) {
+			if (varRelatedSymbolicExpr[*itt]->find(varName) != varRelatedSymbolicExpr[*itt]->end()) {
+				taint.push_back(*itt);
+				unTaint.erase(itt);
+			} else {
+				itt++;
+			}
+		}
+	}
+
+	for (std::vector<std::string>::iterator it = taint.begin(),
+			ie = taint.end(); it != ie; it++) {
+		varName = *it;
+		if (taintSymbolicExpr.find(varName) == taintSymbolicExpr.end()) {
+			potentialTaintSymbolicExpr.insert(varName);
+		}
+	}
+
+
+
+
 }
 
 }

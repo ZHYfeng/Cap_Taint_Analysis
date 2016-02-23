@@ -206,8 +206,29 @@ void TaintListener::executeInstruction(ExecutionState &state,
 							ki->inst->getOperand(0)->getType());
 					ref<Expr> symbolic = manualMakeTaintSymbolic(state,
 							(*currentEvent)->globalVarFullName, size);
-					ref<Expr> constraint = EqExpr::create(value, symbolic);
+
+					//收集TS和PTS
+					std::string varName = filter.getVarName(symbolic);
+					if (isTaint) {
+						manualMakeTaint(symbolic, true);
+						trace->taintSymbolicExpr.insert(varName);
+						if (trace->unTaintSymbolicExpr.find(varName) != trace->unTaintSymbolicExpr.end()) {
+							trace->unTaintSymbolicExpr.erase(varName);
+						}
+					} else {
+						if (trace->taintSymbolicExpr.find(varName) == trace->taintSymbolicExpr.end()) {
+							trace->unTaintSymbolicExpr.insert(varName);
+						}
+					}
+
 					//编码tp
+					ref<Expr> temp = ConstantExpr::create(0, size);
+					for (std::set<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
+							it != relatedSymbolicExpr->end(); it++) {
+						temp = OrExpr::create(temp, *it);
+					}
+					ref<Expr> constraint = EqExpr::create(temp, symbolic);
+					trace->taintExpr.push_back(constraint);
 
 					if (value->getKind() == Expr::Constant) {
 
@@ -407,7 +428,18 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 				}
 				executor->setDestCell(state.currentThread, ki, returnValue);
 			}
-			if (f->getName() == "pthread_create") {
+			if (f->getName() == "make_taint") {
+				ref<Expr> address =
+						executor->eval(ki, 1, state.currentThread).value;
+				ObjectPair op;
+				executor->getMemoryObject(op, state, address);
+				const MemoryObject *mo = op.first;
+				const ObjectState* os = op.second;
+				ObjectState *wos = state.addressSpace.getWriteable(mo, os);
+				wos->setTaint(true);
+				cerr << "do\n";
+			} else if (f->getName() == "pthread_create") {
+
 				ref<Expr> pthreadAddress = executor->eval(ki, 1,
 						state.currentThread).value;
 				ObjectPair pthreadop;
@@ -421,15 +453,24 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 							(*currentEvent)->globalVarFullName;
 					symbolicMap[globalVarFullName] = value;
 				}
-			} else if (f->getName() == "make_taint") {
-				ref<Expr> address = executor->eval(ki, 1, state.currentThread).value;
-				ObjectPair op;
-				executor->getMemoryObject(op, state, address);
-				const MemoryObject *mo = op.first;
-				const ObjectState* os = op.second;
-				ObjectState *wos = state.addressSpace.getWriteable(mo, os);
-				wos->setTaint(true);
-				cerr << "do\n";
+
+
+			} else if (f->getName().str() == "pthread_create") {
+
+			} else if (f->getName().str() == "pthread_join") {
+
+			} else if (f->getName().str() == "pthread_cond_wait") {
+
+			} else if (f->getName().str() == "pthread_cond_signal") {
+
+			} else if (f->getName().str() == "pthread_cond_broadcast") {
+
+			} else if (f->getName().str() == "pthread_mutex_lock") {
+
+			} else if (f->getName().str() == "pthread_mutex_unlock") {
+
+			} else if (f->getName().str() == "pthread_barrier_wait") {
+
 			}
 			break;
 		}
