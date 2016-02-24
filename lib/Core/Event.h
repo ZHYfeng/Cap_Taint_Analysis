@@ -78,6 +78,7 @@ public:
 	std::string mutexName; // access mutex
 	std::string condName; //access condition;
 	bool isIgnore; //whether ignore this event when detecting
+	std::vector<unsigned> vectorClock;
 
 
 	//2015.7.8 hy

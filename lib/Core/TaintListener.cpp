@@ -357,6 +357,10 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			}
 			if ((*currentEvent)->isGlobal) {
 
+				for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
+					(*currentEvent)->vectorClock.push_back(thread->vectorClock[i]);
+				}
+
 				//指针！！！
 #if PTR
 				if (isFloat || id == Type::IntegerTyID || id == Type::PointerTyID) {
@@ -405,7 +409,11 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			break;
 		}
 		case Instruction::Store: {
-
+			if ((*currentEvent)->isGlobal) {
+				for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
+					(*currentEvent)->vectorClock.push_back(thread->vectorClock[i]);
+				}
+			}
 			break;
 		}
 		case Instruction::Call: {
@@ -454,23 +462,21 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 					symbolicMap[globalVarFullName] = value;
 				}
 
-
-			} else if (f->getName().str() == "pthread_create") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_join") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_cond_wait") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_cond_signal") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_cond_broadcast") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_mutex_lock") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_mutex_unlock") {
-
+				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_barrier_wait") {
-
+				assert(0 && "目前没做");
 			}
 			break;
 		}

@@ -8,12 +8,12 @@
 #ifndef ENCODE_H_
 #define ENCODE_H_
 
-#include "Trace.h"
-#include "KQuery2Z3.h"
+
 #include <z3++.h>
 #include <stack>
 #include <utility>
-
+#include "Trace.h"
+#include "KQuery2Z3.h"
 #include "Event.h"
 #include "RuntimeDataManager.h"
 #include "DealWithSymbolicExpr.h"

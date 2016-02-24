@@ -35,6 +35,7 @@ public:
 	std::map<unsigned, Thread*> getAllUnfinishedThreads();
 	Thread* findThreadById(unsigned threadId);
 	int getThreadNum();
+	Thread* getLastThread();
 };
 
 class ThreadListIterator {

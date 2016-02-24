@@ -72,6 +72,11 @@ int ThreadList::getThreadNum() {
 	return threadNum;
 }
 
+Thread* ThreadList::getLastThread() {
+	return allThreads[index.back()];
+}
+
+
 ThreadListIterator::ThreadListIterator(ThreadList* threadList, unsigned pos) :
 	threadList(threadList),
 	currentPos(pos) {

@@ -1497,6 +1497,15 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				for (vector<unsigned>::iterator bi = ji->second.begin(), be =
 						ji->second.end(); bi != be; bi++) {
 					state.swapInThread(*bi, true, false);
+
+					//vector clock : join
+					Thread *tthread = state.findThreadById(*bi);
+					for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
+						if (tthread->vectorClock[i] < thread->vectorClock[i]) {
+							tthread->vectorClock[i] = thread->vectorClock[i];
+						}
+					}
+
 				}
 			}
 			state.swapOutThread(thread, false, false, false, true);
@@ -4173,6 +4182,13 @@ unsigned Executor::executePThreadCreate(ExecutionState &state, KInstruction *ki,
 		} else {
 			newThread = state.createThread(kthreadEntrance);
 		}
+
+		// vector clock : creat
+		Thread *thread = state.getCurrentThread();
+		for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
+			newThread->vectorClock[i] = thread->vectorClock[i];
+		}
+
 		bindArgument(kthreadEntrance, 0, newThread, arguments[3]);
 		if (statsTracker)
 			statsTracker->framePushed(state, 0);
@@ -4275,6 +4291,16 @@ unsigned Executor::executePThreadCondSignal(ExecutionState &state,
 	if (isSuccess) {
 		if (releasedThreadId != 0) {
 			state.swapInThread(releasedThreadId, false, true);
+
+			//vector clock : signal
+			Thread *thread = state.getCurrentThread();
+			Thread *tthread = state.findThreadById(releasedThreadId);
+			for (unsigned i = 0; i < tthread->vectorClock.size(); i++) {
+				if (tthread->vectorClock[i] < thread->vectorClock[i]) {
+					tthread->vectorClock[i] = thread->vectorClock[i];
+				}
+			}
+
 		}
 	} else {
 		cerr << errorMsg << endl;
@@ -4302,6 +4328,16 @@ unsigned Executor::executePThreadCondBroadcast(ExecutionState &state,
 		for (ti = threadList.begin(), te = threadList.end(); ti != te;
 				ti++, bi++) {
 			state.swapInThread(*ti, false, true);
+
+			//vector clock : signal
+			Thread *thread = state.getCurrentThread();
+			Thread *tthread = state.findThreadById(*ti);
+			for (unsigned i = 0; i < tthread->vectorClock.size(); i++) {
+				if (tthread->vectorClock[i] < thread->vectorClock[i]) {
+					tthread->vectorClock[i] = thread->vectorClock[i];
+				}
+			}
+
 		}
 	} else {
 		cerr << errorMsg << endl;
