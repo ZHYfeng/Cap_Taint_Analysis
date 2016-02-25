@@ -83,8 +83,8 @@ public:
 
 	//2015.7.8 hy
 //	bool isArg;
-	std::vector<ref<klee::Expr> > value; // arg of call / index and offset of getelemenptr / cond of switch
-	std::map<std::string, llvm::Constant*> scrVariables; // function's input variable
+	std::vector<ref<klee::Expr> > value;
+	// arg of call / index and offset of getelemenptr / cond of switch / relation of store
 
 
 

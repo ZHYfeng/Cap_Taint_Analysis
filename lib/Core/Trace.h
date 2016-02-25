@@ -77,6 +77,8 @@ public:
 	std::set<std::string> unTaintSymbolicExpr;
 	std::set<std::string> potentialTaintSymbolicExpr;
 
+	std::set<std::string> taint;
+
 	Trace();
 
 	virtual ~Trace();

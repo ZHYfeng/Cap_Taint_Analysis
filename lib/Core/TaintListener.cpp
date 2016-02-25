@@ -174,10 +174,10 @@ void TaintListener::executeInstruction(ExecutionState &state,
 
 			ref<Expr> value = executor->eval(ki, 0, thread).value;
 			cerr << "value : " << value << "\n";
-			std::set<ref<klee::Expr> >* relatedSymbolicExpr = new std::set<ref<klee::Expr> >();
+			std::vector<ref<klee::Expr> >* relatedSymbolicExpr = &((*currentEvent)->value);
 			filter.resolveTaintExpr(value, relatedSymbolicExpr);
 			bool isTaint = value->isTaint;
-			for (std::set<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
+			for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
 					it != relatedSymbolicExpr->end(); it++) {
 				cerr << *it << "\n";
 				if ((*it)->isTaint) {
@@ -208,8 +208,9 @@ void TaintListener::executeInstruction(ExecutionState &state,
 							(*currentEvent)->globalVarFullName, size);
 
 					//收集TS和PTS
-					std::string varName = filter.getVarName(symbolic);
+					std::string varName = (*currentEvent)->varName;
 					if (isTaint) {
+						trace->taint.insert((*currentEvent)->globalVarFullName);
 						manualMakeTaint(symbolic, true);
 						trace->taintSymbolicExpr.insert(varName);
 						if (trace->unTaintSymbolicExpr.find(varName) != trace->unTaintSymbolicExpr.end()) {
@@ -223,7 +224,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 
 					//编码tp
 					ref<Expr> temp = ConstantExpr::create(0, size);
-					for (std::set<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
+					for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
 							it != relatedSymbolicExpr->end(); it++) {
 						temp = OrExpr::create(temp, *it);
 					}

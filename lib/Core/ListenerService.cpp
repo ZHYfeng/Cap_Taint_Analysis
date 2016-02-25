@@ -11,8 +11,10 @@
 #include "ListenerService.h"
 #include "PSOListener.h"
 #include "SymbolicListener.h"
-#include "Encode.h"
 #include "TaintListener.h"
+#include "Encode.h"
+#include "DTAM.h"
+
 
 namespace klee {
 

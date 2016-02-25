@@ -81,10 +81,16 @@ void DealWithSymbolicExpr::resolveSymbolicExpr(ref<klee::Expr> value,
 }
 
 void DealWithSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value,
-		std::set<ref<klee::Expr> >* relatedSymbolicExpr) {
+		std::vector<ref<klee::Expr> >* relatedSymbolicExpr) {
 	if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
-		if (relatedSymbolicExpr->find(value) == relatedSymbolicExpr->end()) {
-			relatedSymbolicExpr->insert(value);
+		unsigned i;
+		for (i = 0; i < relatedSymbolicExpr->size(); i++) {
+			if((*relatedSymbolicExpr)[i] == value){
+				break;
+			}
+		}
+		if (i < relatedSymbolicExpr->size()) {
+			relatedSymbolicExpr->push_back(value);
 		}
 		return;
 	} else {
