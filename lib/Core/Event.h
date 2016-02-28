@@ -84,7 +84,10 @@ public:
 	//2015.7.8 hy
 //	bool isArg;
 	std::vector<ref<klee::Expr> > value;
-	// arg of call / index and offset of getelemenptr / cond of switch / relation of store
+	// arg of call / index and offset of getelemenptr / cond of switch
+
+	std::vector<ref<klee::Expr> > relatedSymbolicExpr;
+	// relation of store
 
 
 

@@ -12,14 +12,17 @@
 #include "PSOListener.h"
 #include "SymbolicListener.h"
 #include "TaintListener.h"
-#include "Encode.h"
-#include "DTAM.h"
+
 
 
 namespace klee {
 
 ListenerService::ListenerService(Executor* executor) {
+	encode = NULL;
+	dtam = NULL;
 	runState = 0;
+	cost = 0;
+
 }
 
 void ListenerService::pushListener(BitcodeListener* bitcodeListener) {
@@ -132,33 +135,49 @@ void ListenerService::endControl(Executor* executor){
 	case 0: {
 		popListener();
 		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.runningCost += cost;
 		break;
 	}
 	case 1: {
 		popListener();
-		Encode encode(&rdManager);
-		encode.buildifAndassert();
-		if (encode.verify()) {
-			encode.check_if();
+		encode = new Encode(&rdManager);
+		encode->buildifAndassert();
+		if (encode->verify()) {
+			encode->check_if();
 		}
 		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.solvingCost += cost;
 		break;
 	}
 	case 2: {
 		popListener();
-		//TODO: PTS
-
-		executor->getNewPrefix();
 		gettimeofday(&finish, NULL);
-		double cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.taintCost += cost;
+
+		gettimeofday(&start, NULL);
+		//TODO: DTAM
+		dtam = new DTAM(&rdManager);
+		dtam->dtam();
+		gettimeofday(&finish, NULL);
+		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+		rdManager.DTAMCost += cost;
+
+		gettimeofday(&start, NULL);
+		//TODO: PTS
+		encode->PTS();
+		gettimeofday(&finish, NULL);
+		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+		rdManager.PTSCost += cost;
+
+		executor->getNewPrefix();
 		break;
 	}
 	default: {

@@ -10,7 +10,7 @@
 
 #define DEBUG 0
 
-#define OP1 1
+#define OP1 0
 //1为失效，0为生效
 
 #include "DealWithSymbolicExpr.h"
@@ -81,7 +81,7 @@ void DealWithSymbolicExpr::resolveSymbolicExpr(ref<klee::Expr> value,
 }
 
 void DealWithSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value,
-		std::vector<ref<klee::Expr> >* relatedSymbolicExpr) {
+		std::vector<ref<klee::Expr> >* relatedSymbolicExpr, bool* isTaint) {
 	if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
 		unsigned i;
 		for (i = 0; i < relatedSymbolicExpr->size(); i++) {
@@ -89,17 +89,24 @@ void DealWithSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value,
 				break;
 			}
 		}
-		if (i < relatedSymbolicExpr->size()) {
+		if (i == relatedSymbolicExpr->size()) {
 			relatedSymbolicExpr->push_back(value);
+			if(value->isTaint) {
+				*isTaint = true;
+			}
 		}
 		return;
+	} else if (value->getKind() == Expr::Constant) {
+		if(value->isTaint) {
+			*isTaint = true;
+		}
 	} else {
 		unsigned kidsNum = value->getNumKids();
 		if (kidsNum == 2 && value->getKid(0) == value->getKid(1)) {
-			resolveTaintExpr(value->getKid(0), relatedSymbolicExpr);
+			resolveTaintExpr(value->getKid(0), relatedSymbolicExpr, isTaint);
 		} else {
 			for (unsigned int i = 0; i < kidsNum; i++) {
-				resolveTaintExpr(value->getKid(i), relatedSymbolicExpr);
+				resolveTaintExpr(value->getKid(i), relatedSymbolicExpr, isTaint);
 			}
 		}
 	}
@@ -350,9 +357,11 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 
 	std::map<std::string, std::vector<Event *> > usefulReadSet;
 	std::map<std::string, std::vector<Event *> > &readSet = trace->readSet;
+	std::map<std::string, std::vector<Event *> > &allReadSet = trace->allReadSet;
 	usefulReadSet.clear();
 	for (std::map<std::string, std::vector<Event *> >::iterator nit =
 			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
+		allReadSet.insert(*nit);
 		varName = nit->first;
 		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulReadSet.insert(*nit);
@@ -382,9 +391,11 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 
 	std::map<std::string, std::vector<Event *> > usefulWriteSet;
 	std::map<std::string, std::vector<Event *> > &writeSet = trace->writeSet;
+	std::map<std::string, std::vector<Event *> > &allWriteSet = trace->allWriteSet;
 	usefulWriteSet.clear();
 	for (std::map<std::string, std::vector<Event *> >::iterator nit =
 			writeSet.begin(), nie = writeSet.end(); nit != nie; ++nit) {
+		allWriteSet.insert(*nit);
 		varName = nit->first;
 		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulWriteSet.insert(*nit);
@@ -449,7 +460,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 			if ((*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Load
 					|| (*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Store) {
 				if (allRelatedSymbolicExpr.find((*currentEvent)->varName) == allRelatedSymbolicExpr.end() && !OP1) {
-					(*currentEvent)->isGlobal = false;
+//					(*currentEvent)->isGlobal = false;
 					(*currentEvent)->usefulGlobal = false;
 				} else {
 					(*currentEvent)->usefulGlobal = true;

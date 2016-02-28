@@ -218,11 +218,11 @@ RNG theRNG;
 bool Executor::hasInitialized = false;
 
 Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
+		Interpreter(opts),
 		kmodule(0),
 		interpreterHandler(ih),
 		searcher(0),
 		externalDispatcher(new ExternalDispatcher()),
-		Interpreter(opts),
 		statsTracker(0),
 		pathWriter(0),
 		symPathWriter(0),
@@ -230,6 +230,7 @@ Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
 		//processTree(0),
 		replayOut(0),
 		replayPath(0),
+		replayPosition(0),
 		usingSeeds(0),
 		atMemoryLimit(false),
 		inhibitForking(false),

@@ -13,6 +13,8 @@
 #include "klee/ExecutionState.h"
 #include "BitcodeListener.h"
 #include "RuntimeDataManager.h"
+#include "Encode.h"
+#include "DTAM.h"
 
 namespace klee {
 
@@ -21,8 +23,11 @@ class ListenerService {
 private:
 	std::vector<BitcodeListener*> bitcodeListeners;
 	RuntimeDataManager rdManager;
+	Encode *encode;
+	DTAM *dtam;
 	unsigned runState;
 	struct timeval start, finish;
+	double cost;
 
 
 public:

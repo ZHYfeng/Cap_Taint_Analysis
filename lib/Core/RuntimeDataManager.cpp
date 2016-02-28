@@ -23,7 +23,6 @@ namespace klee {
 
 RuntimeDataManager::RuntimeDataManager() :
 		currentTrace(NULL) {
-	// TODO Auto-generated constructor stub
 	traceList.reserve(20);
 	allFormulaNum = 0;
 	allGlobal = 0;
@@ -37,10 +36,12 @@ RuntimeDataManager::RuntimeDataManager() :
 	satCost = 0.0;
 	unSatCost = 0.0;
 	runState = 0;
+	taintCost = 0;
+	PTSCost = 0;
+	DTAMCost = 0;
 }
 
 RuntimeDataManager::~RuntimeDataManager() {
-	// TODO Auto-generated destructor stub
 	for (vector<Trace*>::iterator ti = traceList.begin(), te = traceList.end();
 			ti != te; ti++) {
 		delete *ti;
@@ -89,6 +90,20 @@ RuntimeDataManager::~RuntimeDataManager() {
 	}
 	ss << "SolvingCost:" << solvingCost << "\n";
 	ss << "RunningCost:" << runningCost << "\n";
+
+	ss << "PTSCost:" << PTSCost + taintCost << "\n";
+	ss << "DTAMCost:" << DTAMCost + taintCost << "\n";
+
+
+	ss << "DTAMSerial:" << DTAMSerial << "\n";
+	ss << "DTAMParallel:" << DTAMParallel << "\n";
+	ss << "DTAMhybrid:" << DTAMhybrid << "\n";
+
+	ss << "taint:" << taint << "\n";
+	ss << "taintPTS:" << taintPTS << "\n";
+	ss << "noTaintPTS:" << noTaintPTS << "\n";
+	ss << "allTaint:" << taint + taintPTS << "\n";
+
 	out_to_file << ss.str();
 	out_to_file.close();
 }

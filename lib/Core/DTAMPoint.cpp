@@ -10,7 +10,7 @@
 DTAMPoint::DTAMPoint(std::string _name, std::vector<unsigned> _vectorClock) :
 		name(_name), isTaint(false) {
 	for (unsigned i = 0; i < _vectorClock.size(); i++) {
-		vectorClock[i] = _vectorClock[i];
+		vectorClock.push_back(_vectorClock[i]);
 	}
 }
 

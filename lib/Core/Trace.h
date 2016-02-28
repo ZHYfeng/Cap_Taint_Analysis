@@ -73,11 +73,18 @@ public:
 	std::vector<Event*> brEvent;
 	std::vector<Event*> assertEvent;
 
+	std::set<std::string> initTaintSymbolicExpr;
 	std::set<std::string> taintSymbolicExpr;
 	std::set<std::string> unTaintSymbolicExpr;
 	std::set<std::string> potentialTaintSymbolicExpr;
 
-	std::set<std::string> taint;
+	std::set<std::string> DTAMSerial;
+	std::set<std::string> DTAMParallel;
+	std::set<std::string> DTAMhybrid;
+
+	std::vector<std::string> PTS;
+	std::vector<std::string> taintPTS;
+	std::vector<std::string> noTaintPTS;
 
 	Trace();
 
@@ -127,6 +134,8 @@ public:
 	std::map<Event*, uint64_t> joinThreadPoint; //key--event, value--joined thread id
 
 	//全局变量读写操作数据-->生成读写关系约束
+	std::map<std::string, std::vector<Event *> > allReadSet;
+	std::map<std::string, std::vector<Event *> > allWriteSet;
 	std::map<std::string, std::vector<Event *> > readSet; //key--global variable, value--the whole events that read global vars.
 	std::map<std::string, std::vector<Event *> > writeSet;
 	std::map<std::string, std::vector<Event *> > usefulReadSet;

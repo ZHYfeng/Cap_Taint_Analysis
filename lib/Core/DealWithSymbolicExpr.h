@@ -33,7 +33,7 @@ public:
 	static void addExprToVector(std::vector<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr);
 	static void addExprToVector(std::set<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr);
 	static void resolveSymbolicExpr(ref<Expr> value, std::set<std::string>* relatedSymbolicExpr);
-	static void resolveTaintExpr(ref<klee::Expr> value, std::vector<ref<klee::Expr> >* relatedSymbolicExpr);
+	static void resolveTaintExpr(ref<klee::Expr> value, std::vector<ref<klee::Expr> >* relatedSymbolicExpr, bool* isTaint);
 	static std::string getVarName(ref<Expr> value);
 	static std::string getFullName(ref<Expr> value);
 

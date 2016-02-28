@@ -183,10 +183,10 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 		if (f && f->isDeclaration()
 				&& f->getIntrinsicID() == Intrinsic::not_intrinsic
 //				&& !f->isDeclaration()
-//				&& kmodule->kleeFunctions.find(f)
-//						== kmodule->kleeFunctions.end()
-//				&& kmodule->intrinsicFunctions.find(f)
-//						== kmodule->intrinsicFunctions.end()
+				&& kmodule->kleeFunctions.find(f)
+						== kmodule->kleeFunctions.end()
+				&& kmodule->intrinsicFunctions.find(f)
+						== kmodule->intrinsicFunctions.end()
 						) {
 
 			item->isFunctionWithSourceCode = false;
@@ -454,6 +454,39 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			//						item->outputParams.push_back(constant);
 			//						rdManager.insertPrintfParam(name, constant);
 			//					}
+		} else if (f->getName() == "make_taint") {
+			ref<Expr> address = executor->eval(ki, 1, thread).value;
+			ConstantExpr* realAddress = dyn_cast<ConstantExpr>(address.get());
+			if (realAddress) {
+				uint64_t key = realAddress->getZExtValue();
+				ObjectPair op;
+				bool success = executor->getMemoryObject(op, state, address);
+				if (success) {
+					const MemoryObject *mo = op.first;
+					if (executor->isGlobalMO(mo)) {
+						item->isGlobal = true;
+					} else {
+						item->isLocal = true;
+					}
+					//					if (mo->isGlobal) {
+					//						insertGlobalVariable(address, inst->getOperand(1)->getType()->getPointerElementType());
+					//					}
+					string varName = createVarName(mo->id, address, item->isGlobal);
+					string varFullName;
+					if (item->isGlobal) {
+						unsigned storeTime = getStoreTimeForTaint(key);
+						if (storeTime == 0) {
+							varFullName = varName + "_Init_tag";
+						} else {
+							varFullName = createGlobalVarFullName(varName, storeTime,
+									true);
+						}
+
+					}
+					item->globalVarFullName = varFullName;
+					item->varName = varName;
+				}
+			}
 		} else if (kmodule->kleeFunctions.find(f)
 				!= kmodule->kleeFunctions.end()) {
 			item->eventType = Event::IGNORE;
@@ -642,7 +675,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 					}
 					item->globalVarFullName = varFullName;
 					item->varName = varName;
-//					cerr << varName << "\n";
+
 #if PTR
 					if (item->isGlobal) {
 #else
@@ -1228,7 +1261,7 @@ void PSOListener::analyzeInputValue(uint64_t& address, ObjectPair& op,
 		ref<Expr> value = os->read(address - mo->address,
 				type->getPrimitiveSizeInBits());
 		string variableName = createVarName(mo->id, address, executor->isGlobalMO(mo));
-		map<uint64_t, unsigned>::iterator index = storeRecord.find(address);
+//		map<uint64_t, unsigned>::iterator index = storeRecord.find(address);
 		unsigned storeTime = getStoreTime(address);
 		address += type->getPrimitiveSizeInBits() / 8;
 		if (executor->isGlobalMO(mo)) {
@@ -1308,6 +1341,17 @@ unsigned PSOListener::getStoreTime(uint64_t address) {
 	} else {
 		storeTime = index->second + 1;
 		storeRecord[address] = storeTime;
+	}
+	return storeTime;
+}
+
+unsigned PSOListener::getStoreTimeForTaint(uint64_t address) {
+	unsigned storeTime;
+	map<uint64_t, unsigned>::iterator index = storeRecord.find(address);
+	if (index == storeRecord.end()) {
+		storeTime = 0;
+	} else {
+		storeTime = index->second;
 	}
 	return storeTime;
 }

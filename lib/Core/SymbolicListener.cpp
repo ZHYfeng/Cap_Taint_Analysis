@@ -96,8 +96,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 		Instruction* inst = ki->inst;
 		Thread* thread = state.currentThread;
 //		cerr << "event name : " << (*currentEvent)->eventName << " ";
-//		cerr << "thread id : " << thread->threadId;
-//		inst->dump();
+//		cerr << "thread
 //		cerr << "thread id : " << (*currentEvent)->threadId ;
 //		(*currentEvent)->inst->inst->dump();
 		switch (inst->getOpcode()) {
@@ -245,6 +244,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 		}
 		case Instruction::Call: {
 			CallSite cs(inst);
+			Function *f = (*currentEvent)->calledFunction;
 			ref<Expr> function = executor->eval(ki, 0, thread).value;
 			if (function->getKind() == Expr::Concat) {
 				ref<Expr> value = symbolicMap[filter.getFullName(function)];
@@ -286,7 +286,11 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
 							} else 	if (id == Type::PointerTyID) {
-								assert (0 && "pointer is other symbolic");
+								if (f->getName().str() == "pthread_create") {
+
+								} else {
+									assert (0 && "pointer is other symbolic");
+								}
 							}
 							executor->evalAgainst(ki, j, thread, svalue);
 						}

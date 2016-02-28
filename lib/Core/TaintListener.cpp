@@ -62,10 +62,10 @@ void TaintListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 void TaintListener::executeInstruction(ExecutionState &state,
 		KInstruction *ki) {
 	Trace* trace = rdManager->getCurrentTrace();
+	Instruction* inst = ki->inst;
+	Thread* thread = state.currentThread;
+//	inst->dump();
 	if ((*currentEvent)) {
-		Instruction* inst = ki->inst;
-		Thread* thread = state.currentThread;
-		inst->dump();
 		switch (inst->getOpcode()) {
 		case Instruction::Br: {
 			BranchInst *bi = dyn_cast<BranchInst>(inst);
@@ -95,11 +95,15 @@ void TaintListener::executeInstruction(ExecutionState &state,
 		}
 		case Instruction::Call: {
 			CallSite cs(inst);
+			Function *f = (*currentEvent)->calledFunction;
 			ref<Expr> function = executor->eval(ki, 0, thread).value;
 			if (function->getKind() == Expr::Concat) {
 				ref<Expr> value = symbolicMap[filter.getFullName(function)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "call function is symbolic");
+				}
+				if(function->isTaint) {
+					value->isTaint = true;
 				}
 				executor->evalAgainst(ki, 0, thread, value);
 			}
@@ -127,13 +131,26 @@ void TaintListener::executeInstruction(ExecutionState &state,
 									&& value->getKind() == Expr::Read) {
 								assert(0 && "pointer is expr::read");
 							}
+							if(value->isTaint) {
+								svalue->isTaint = true;
+							}
 							executor->evalAgainst(ki, j, thread, svalue);
 						} else {
 							ref<Expr> svalue = (*currentEvent)->value[j - 1];
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
 							} else if (id == Type::PointerTyID) {
-								assert(0 && "pointer is other symbolic");
+								if (f->getName().str() == "pthread_create") {
+
+								} else {
+									assert (0 && "pointer is other symbolic");
+								}
+							}
+							bool isTaint = value->isTaint;
+							std::vector<ref<klee::Expr> > relatedSymbolicExpr;
+							filter.resolveTaintExpr(value, &relatedSymbolicExpr, &isTaint);
+							if(isTaint) {
+								svalue->isTaint = true;
 							}
 							executor->evalAgainst(ki, j, thread, svalue);
 						}
@@ -173,17 +190,15 @@ void TaintListener::executeInstruction(ExecutionState &state,
 			}
 
 			ref<Expr> value = executor->eval(ki, 0, thread).value;
-			cerr << "value : " << value << "\n";
-			std::vector<ref<klee::Expr> >* relatedSymbolicExpr = &((*currentEvent)->value);
-			filter.resolveTaintExpr(value, relatedSymbolicExpr);
+//			cerr << "value : " << value << "\n";
 			bool isTaint = value->isTaint;
-			for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
-					it != relatedSymbolicExpr->end(); it++) {
-				cerr << *it << "\n";
-				if ((*it)->isTaint) {
-					isTaint = true;
-				}
-			}
+			std::vector<ref<klee::Expr> >* relatedSymbolicExpr = &((*currentEvent)->relatedSymbolicExpr);
+			filter.resolveTaintExpr(value, relatedSymbolicExpr, &isTaint);
+//			cerr << "relatedSymbolicExpr" << "\n";
+//			for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
+//					it != relatedSymbolicExpr->end(); it++) {
+//				cerr << "name : " << *it << " isTaint : " << (*it)->isTaint << "\n";
+//			}
 			ObjectPair op;
 			executor->getMemoryObject(op, state, address);
 			const MemoryObject *mo = op.first;
@@ -210,7 +225,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					//收集TS和PTS
 					std::string varName = (*currentEvent)->varName;
 					if (isTaint) {
-						trace->taint.insert((*currentEvent)->globalVarFullName);
+						trace->DTAMSerial.insert((*currentEvent)->globalVarFullName);
 						manualMakeTaint(symbolic, true);
 						trace->taintSymbolicExpr.insert(varName);
 						if (trace->unTaintSymbolicExpr.find(varName) != trace->unTaintSymbolicExpr.end()) {
@@ -226,7 +241,9 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					ref<Expr> temp = ConstantExpr::create(0, size);
 					for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
 							it != relatedSymbolicExpr->end(); it++) {
-						temp = OrExpr::create(temp, *it);
+						string varFullName = filter.getFullName(*it);
+						ref<Expr> orExpr = manualMakeTaintSymbolic(state, varFullName, size);
+						temp = OrExpr::create(temp, orExpr);
 					}
 					ref<Expr> constraint = EqExpr::create(temp, symbolic);
 					trace->taintExpr.push_back(constraint);
@@ -243,6 +260,9 @@ void TaintListener::executeInstruction(ExecutionState &state,
 								&& value->getKind() == Expr::Read) {
 							assert(0 && "pointer is Expr::read");
 						}
+						if(value->isTaint) {
+							svalue->isTaint = true;
+						}
 						executor->evalAgainst(ki, 0, thread, svalue);
 					} else {
 						ref<Expr> svalue = (*currentEvent)->value.back();
@@ -250,6 +270,9 @@ void TaintListener::executeInstruction(ExecutionState &state,
 							assert(0 && "store value is symbolic");
 						} else if (id == Type::PointerTyID) {
 							assert(0 && "pointer is other symbolic");
+						}
+						if(isTaint) {
+							svalue->isTaint = true;
 						}
 						executor->evalAgainst(ki, 0, thread, svalue);
 					}
@@ -346,6 +369,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 //TODO： Algorithm 2 AnalyseTaint
 void TaintListener::instructionExecuted(ExecutionState &state,
 		KInstruction *ki) {
+	Trace* trace = rdManager->getCurrentTrace();
 	if ((*currentEvent)) {
 		Instruction* inst = ki->inst;
 		Thread* thread = state.currentThread;
@@ -360,6 +384,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 
 				for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
 					(*currentEvent)->vectorClock.push_back(thread->vectorClock[i]);
+//					cerr << "vectorClock " << i << " : " << (*currentEvent)->vectorClock[i] << "\n";
 				}
 
 				//指针！！！
@@ -402,17 +427,22 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			bool isTaint = os->isTaint;
 			if (isTaint) {
 				manualMakeTaint(value, true);
+				if ((*currentEvent)->isGlobal) {
+					trace->DTAMSerial.insert((*currentEvent)->globalVarFullName);
+				}
+
 			} else {
 				manualMakeTaint(value, false);
 			}
 			executor->setDestCell(thread, ki, value);
-			cerr << value << " taint : " << isTaint << "\n";
+//			cerr << value << " taint : " << isTaint << "\n";
 			break;
 		}
 		case Instruction::Store: {
 			if ((*currentEvent)->isGlobal) {
 				for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
 					(*currentEvent)->vectorClock.push_back(thread->vectorClock[i]);
+//					cerr << "vectorClock " << i << " : " << (*currentEvent)->vectorClock[i] << "\n";
 				}
 			}
 			break;
@@ -421,7 +451,6 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			CallSite cs(inst);
 			Function *f = (*currentEvent)->calledFunction;
 			if (!(*currentEvent)->isFunctionWithSourceCode) {
-				//TODO: taint
 				unsigned numArgs = cs.arg_size();
 				bool isTaint = 0;
 				for (unsigned j = numArgs; j > 0; j--) {
@@ -446,7 +475,9 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 				const ObjectState* os = op.second;
 				ObjectState *wos = state.addressSpace.getWriteable(mo, os);
 				wos->setTaint(true);
-				cerr << "do\n";
+
+				trace->initTaintSymbolicExpr.insert((*currentEvent)->globalVarFullName);
+
 			} else if (f->getName() == "pthread_create") {
 
 				ref<Expr> pthreadAddress = executor->eval(ki, 1,

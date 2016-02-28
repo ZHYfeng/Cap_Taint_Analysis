@@ -114,17 +114,15 @@ Condition* CondManager::getCondition(string condName) {
 }
 
 CondManager::CondManager()
-	: nextConditionId(1) {
-	// TODO Auto-generated constructor stub
-
+	: nextConditionId(1), executor(NULL) {
+	this->mutexManager = NULL;
 }
 
-CondManager::CondManager(MutexManager* mutexManaget) {
-	this->mutexManager = mutexManager;
+CondManager::CondManager(MutexManager* _mutexManaget) : nextConditionId(1), executor(NULL) {
+	this->mutexManager = _mutexManaget;
 }
 
 CondManager::~CondManager() {
-	// TODO Auto-generated destructor stub
 	clear();
 }
 

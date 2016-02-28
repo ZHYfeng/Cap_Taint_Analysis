@@ -31,13 +31,14 @@ private:
 	Trace* trace; //all data about encoding
 	context z3_ctx;
 	solver z3_solver;
+	solver z3_taint_solver;
 	DealWithSymbolicExpr filter;
 	unsigned formulaNum;
 	unsigned solvingTimes;
 
 public:
 	Encode(RuntimeDataManager* data) :
-			runtimeData(data), z3_solver(z3_ctx) {
+			runtimeData(data), z3_solver(z3_ctx), z3_taint_solver(z3_ctx) {
 		trace = data->getCurrentTrace();
 		formulaNum = 0;
 		solvingTimes = 0;
@@ -48,10 +49,13 @@ public:
 	}
 	void buildAllFormula();
 	void buildifAndassert();
+	void buildPTSFormula();
 	void showInitTrace();
 	void check_output();
 	void check_if();
 	bool verify();
+
+	void PTS();
 
 private:
 
@@ -65,10 +69,13 @@ private:
 
 	void buildInitValueFormula(solver z3_solver_init);
 	void buildPathCondition(solver z3_solver_pc);
-	void buildMemoryModelFormula();
-	void buildPartialOrderFormula();
+	void buildMemoryModelFormula(solver z3_solver_mm);
+	void buildPartialOrderFormula(solver z3_solver_po);
 	void buildReadWriteFormula(solver z3_solver_rw);
-	void buildSynchronizeFormula();
+	void buildSynchronizeFormula(solver z3_solver_sync);
+	void buildInitTaintFormula(solver z3_solver_it);
+	void buildTaintMatchFormula(solver z3_solver_tm);
+	void buildTaintProgatationFormula(solver z3_solver_tp);
 	void buildOutputFormula();
 
 	expr buildExprForConstantValue(Value *V, bool isLeft, string prefix);
@@ -89,6 +96,9 @@ private:
 	expr readFromWriteFormula(Event *read, Event *write, string var);
 	bool readFromInitFormula(Event * read, expr& ret);
 
+	expr taintReadFromWriteFormula(Event *read, Event *write, string var);
+	bool taintReadFromInitFormula(Event * read, expr& ret);
+
 	void computePrefix(vector<Event*>& vecEvent, Event* ifEvent);
 	void showPrefixInfo(Prefix* prefix, Event* ifEvent);
 
@@ -101,6 +111,8 @@ private:
 	void logStatisticInfo();
 
 	void controlGranularity(int level);
+
+	expr makeOrTaint(ref<klee::Expr> value);
 
 };
 

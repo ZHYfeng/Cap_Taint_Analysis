@@ -27,7 +27,7 @@ CondScheduler* getCondSchedulerByType(CondScheduler::CondSchedulerType type) {
 	}
 
 	case CondScheduler::Random: {
-		//scheduler = new RandomCondScheduler();
+//		scheduler = new RandomCondScheduler();
 		break;
 	}
 	default: {

@@ -32,11 +32,23 @@ public:
 	unsigned uunSatBranch;
 	double runningCost;
 	double solvingCost;
-	double taintCost;
 	double satCost;
 	double unSatCost;
 
 	unsigned runState;
+
+	double taintCost;
+	double PTSCost;
+	double DTAMCost;
+
+	unsigned DTAMSerial;
+	unsigned DTAMParallel;
+	unsigned DTAMhybrid;
+
+	unsigned taint;
+	unsigned taintPTS;
+	unsigned noTaintPTS;
+	unsigned allTaint;
 
 	RuntimeDataManager();
 	virtual ~RuntimeDataManager();

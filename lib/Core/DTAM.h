@@ -26,11 +26,12 @@ private:
 
 public:
 	DTAM(RuntimeDataManager* data);
-	virtual ~DTAM();
-	void DTAMSerialAndParallel();
+	~DTAM();
+	void DTAMParallel();
 	void DTAMhybrid();
 	void initTaint();
-	void getTaint();
+	void getTaint(std::set<std::string> &taint);
+	void dtam();
 
 
 };
