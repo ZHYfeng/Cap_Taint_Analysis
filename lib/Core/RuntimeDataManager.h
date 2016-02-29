@@ -50,6 +50,18 @@ public:
 	unsigned noTaintPTS;
 	unsigned allTaint;
 
+	double firstPTSCost;
+	double firstDTAMCost;
+
+	unsigned firstDTAMSerial;
+	unsigned firstDTAMParallel;
+	unsigned firstDTAMhybrid;
+
+	unsigned firstTaint;
+	unsigned firstTaintPTS;
+	unsigned firstNoTaintPTS;
+	unsigned firstAllTaint;
+
 	RuntimeDataManager();
 	virtual ~RuntimeDataManager();
 

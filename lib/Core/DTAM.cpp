@@ -110,7 +110,13 @@ void DTAM::initTaint() {
 	for (std::map<std::string, DTAMPoint*>::iterator it = allRead.begin(), ie =
 			allRead.end(); it != ie; it++) {
 		DTAMPoint *point = (*it).second;
-		point->isTaint = false;
+		std::string name = point->name;
+		if (trace->DTAMSerial.find(name) != trace->DTAMSerial.end()) {
+			point->isTaint = true;
+			remainPoint.push_back(point);
+		} else {
+			point->isTaint = false;
+		}
 	}
 
 	//深度优先
@@ -138,7 +144,7 @@ void DTAM::getTaint(std::set<std::string> &taint) {
 		DTAMPoint *point = (*it).second;
 		if (point->isTaint == true) {
 			std::string name = point->name;
-//			std::cerr << "name : " << name << "\n";
+			std::cerr << "name : " << name << "\n";
 //			std::cerr << "vector clock :";
 //			for (unsigned i = 0; i < point->vectorClock.size(); i++) {
 //				std::cerr << " " << point->vectorClock[i];
@@ -153,7 +159,7 @@ void DTAM::getTaint(std::set<std::string> &taint) {
 		DTAMPoint *point = (*it).second;
 		if (point->isTaint == true) {
 			std::string name = point->name;
-//			std::cerr << "name : " << name << "\n";
+			std::cerr << "name : " << name << "\n";
 //			std::cerr << "vector clock :";
 //			for (unsigned i = 0; i < point->vectorClock.size(); i++) {
 //				std::cerr << " " << point->vectorClock[i];

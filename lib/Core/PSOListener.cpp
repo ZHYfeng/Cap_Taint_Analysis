@@ -1092,7 +1092,7 @@ void PSOListener::handleConstantExpr(llvm::ConstantExpr* expr) {
 
 	default: {
 		cerr << expr->getOpcode() << endl;
-		assert("0 && unsupported Opcode");
+		assert(0 && "unsupported Opcode");
 	}
 
 	}

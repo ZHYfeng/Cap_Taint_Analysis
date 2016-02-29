@@ -161,7 +161,6 @@ void ListenerService::endControl(Executor* executor){
 		rdManager.taintCost += cost;
 
 		gettimeofday(&start, NULL);
-		//TODO: DTAM
 		dtam = new DTAM(&rdManager);
 		dtam->dtam();
 		gettimeofday(&finish, NULL);
@@ -170,12 +169,25 @@ void ListenerService::endControl(Executor* executor){
 		rdManager.DTAMCost += cost;
 
 		gettimeofday(&start, NULL);
-		//TODO: PTS
 		encode->PTS();
 		gettimeofday(&finish, NULL);
 		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.PTSCost += cost;
+
+		if (executor->executionNum == 1) {
+			rdManager.firstDTAMCost = rdManager.DTAMCost + rdManager.taintCost;
+			rdManager.firstPTSCost = rdManager.PTSCost + rdManager.taintCost;
+
+			rdManager.firstDTAMSerial = rdManager.DTAMSerial;
+			rdManager.firstDTAMParallel = rdManager.DTAMParallel;
+			rdManager.firstDTAMhybrid = rdManager.DTAMhybrid;
+
+			rdManager.firstTaint = rdManager.taint;
+			rdManager.firstTaintPTS = rdManager.taintPTS;
+			rdManager.firstNoTaintPTS = rdManager.noTaintPTS;
+			rdManager.firstAllTaint = rdManager.firstTaint + rdManager.firstTaintPTS;
+		}
 
 		executor->getNewPrefix();
 		break;

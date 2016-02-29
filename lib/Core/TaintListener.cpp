@@ -205,9 +205,9 @@ void TaintListener::executeInstruction(ExecutionState &state,
 			const ObjectState *os = op.second;
 			ObjectState *wos = state.addressSpace.getWriteable(mo, os);
 			if (isTaint) {
-				wos->setTaint(true);
+				wos->insertTaint(address);
 			} else {
-				wos->setTaint(false);
+				wos->eraseTaint(address);
 			}
 			Type::TypeID id = ki->inst->getOperand(0)->getType()->getTypeID();
 			bool isFloat = 0;
@@ -424,7 +424,10 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			ObjectPair op;
 			executor->getMemoryObject(op, state, address);
 			const ObjectState *os = op.second;
-			bool isTaint = os->isTaint;
+			bool isTaint = false;
+			if (os->isTaint.find(address) != os->isTaint.end()) {
+				isTaint = true;
+			}
 			if (isTaint) {
 				manualMakeTaint(value, true);
 				if ((*currentEvent)->isGlobal) {
@@ -474,7 +477,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 				const MemoryObject *mo = op.first;
 				const ObjectState* os = op.second;
 				ObjectState *wos = state.addressSpace.getWriteable(mo, os);
-				wos->setTaint(true);
+				wos->insertTaint(address);
 
 				trace->initTaintSymbolicExpr.insert((*currentEvent)->globalVarFullName);
 

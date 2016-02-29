@@ -36,9 +36,31 @@ RuntimeDataManager::RuntimeDataManager() :
 	satCost = 0.0;
 	unSatCost = 0.0;
 	runState = 0;
+
 	taintCost = 0;
 	PTSCost = 0;
 	DTAMCost = 0;
+
+	firstPTSCost = 0;
+	firstDTAMCost = 0;
+
+	DTAMSerial = 0;
+	DTAMParallel = 0;
+	DTAMhybrid = 0;
+
+	taint = 0;
+	taintPTS = 0;
+	noTaintPTS = 0;
+	allTaint = 0;
+
+	firstDTAMSerial = 0;
+	firstDTAMParallel = 0;
+	firstDTAMhybrid = 0;
+
+	firstTaint = 0;
+	firstTaintPTS = 0;
+	firstNoTaintPTS = 0;
+	firstAllTaint = 0;
 }
 
 RuntimeDataManager::~RuntimeDataManager() {
@@ -103,6 +125,19 @@ RuntimeDataManager::~RuntimeDataManager() {
 	ss << "taintPTS:" << taintPTS << "\n";
 	ss << "noTaintPTS:" << noTaintPTS << "\n";
 	ss << "allTaint:" << taint + taintPTS << "\n";
+
+	ss << "firstPTSCost:" << firstPTSCost << "\n";
+	ss << "firstDTAMCost:" << firstDTAMCost << "\n";
+
+
+	ss << "firstDTAMSerial:" << firstDTAMSerial << "\n";
+	ss << "firstDTAMParallel:" << firstDTAMParallel << "\n";
+	ss << "firstDTAMhybrid:" << firstDTAMhybrid << "\n";
+
+	ss << "firstTaint:" << firstTaint << "\n";
+	ss << "firstTaintPTS:" << firstTaintPTS << "\n";
+	ss << "firstNoTaintPTS:" << firstNoTaintPTS << "\n";
+	ss << "firstAllTaint:" << firstAllTaint << "\n";
 
 	out_to_file << ss.str();
 	out_to_file.close();

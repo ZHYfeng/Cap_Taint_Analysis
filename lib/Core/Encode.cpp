@@ -530,6 +530,16 @@ void Encode::PTS() {
 	runtimeData->taint += DTAMSerial.size();
 	runtimeData->taintPTS += taintPTS.size();
 	runtimeData->noTaintPTS += noTaintPTS.size();
+
+	std::cerr << "size : " <<  DTAMSerial.size() + taintPTS.size() << "\n";
+	for (std::set<std::string>::iterator it = DTAMSerial.begin();
+				it != DTAMSerial.end(); it++) {
+		std::cerr << "name : " << *it << "\n";
+	}
+	for (std::vector<std::string>::iterator it = taintPTS.begin();
+				it != taintPTS.end(); ) {
+		std::cerr << "name : " << *it << "\n";
+	}
 }
 
 
