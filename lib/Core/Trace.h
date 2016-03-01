@@ -125,6 +125,8 @@ public:
 	void createAbstract();
 	bool isEqual(Trace* trace);
 
+	unsigned getAssemblyLine(std::string name);
+
 private:
 	/*******************added by xdzhang**********************/
 

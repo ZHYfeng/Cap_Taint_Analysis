@@ -40,6 +40,9 @@ public:
 	double taintCost;
 	double PTSCost;
 	double DTAMCost;
+	double DTAMSerialCost;
+	double DTAMParallelCost;
+	double DTAMhybridCost;
 
 	unsigned DTAMSerial;
 	unsigned DTAMParallel;
@@ -52,6 +55,9 @@ public:
 
 	double firstPTSCost;
 	double firstDTAMCost;
+	double firstDTAMSerialCost;
+	double firstDTAMParallelCost;
+	double firstDTAMhybridCost;
 
 	unsigned firstDTAMSerial;
 	unsigned firstDTAMParallel;
@@ -61,6 +67,11 @@ public:
 	unsigned firstTaintPTS;
 	unsigned firstNoTaintPTS;
 	unsigned firstAllTaint;
+
+	unsigned firstDTAMSerialMap;
+	unsigned firstDTAMParallelMap;
+	unsigned firstDTAMhybridMap;
+	unsigned firstTaintMap;
 
 	RuntimeDataManager();
 	virtual ~RuntimeDataManager();
@@ -74,6 +85,11 @@ public:
 	bool isCurrentTraceUntested();
 	void printAllPrefix(std::ostream &out);
 	void printAllTrace(std::ostream &out);
+
+	std::set<unsigned> taintMap;
+	std::set<unsigned> DTAMSerialMap;
+	std::set<unsigned> DTAMParallelMap;
+	std::set<unsigned> DTAMhybridMap;
 };
 
 }

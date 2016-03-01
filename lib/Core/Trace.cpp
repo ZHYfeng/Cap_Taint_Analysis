@@ -36,19 +36,19 @@
 #endif
 #include <iostream>
 
+#include "klee/Internal/Module/InstructionInfoTable.h"
+
 using namespace std;
 using namespace llvm;
 
 namespace klee {
 
 Trace::Trace() :
-		nextEventId(0), eventList(20), isUntested(true) {
-	// TODO Auto-generated constructor stub
+		Id(0), nextEventId(0), eventList(20), isUntested(true) {
 
 }
 
 Trace::~Trace() {
-	// TODO Auto-generated destructor stub
 	for (vector<Event*>::iterator ti = path.begin(), te = path.end(); ti != te;
 			ti++) {
 		delete *ti;
@@ -585,6 +585,36 @@ bool Trace::isEqual(Trace* trace) {
 		}
 	}
 	return same;
+}
+
+unsigned Trace::getAssemblyLine(std::string name) {
+	std::stringstream varName;
+	varName.str("");
+	unsigned int i = 0;
+	while ((name.at(i) != 'S') && (name.at(i) != 'L')) {
+		varName << name.at(i);
+		i++;
+	}
+	std::map<std::string, std::vector<Event *> >::iterator all;
+	if (name.at(i) == 'S') {
+		all = allWriteSet.find(varName.str());
+		if (all == allWriteSet.end()) {
+			assert(0 && "getAssemblyLine can not find");
+		}
+	} else {
+		all = allReadSet.find(varName.str());
+		if (all == allReadSet.end()) {
+			assert(0 && "getAssemblyLine can not find");
+		}
+	}
+	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
+			all->second.end(); it != ie; it++) {
+		if ((*it)->globalVarFullName == name) {
+			return (*it)->inst->info->assemblyLine;
+		}
+	}
+	assert (0 && "getAssemblyLine can not find");
+	return 0;
 }
 
 } /* namespace klee */

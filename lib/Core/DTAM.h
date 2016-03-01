@@ -13,6 +13,7 @@
 #include "Event.h"
 #include "RuntimeDataManager.h"
 #include "DealWithSymbolicExpr.h"
+#include <sys/time.h>
 
 namespace klee {
 
@@ -23,6 +24,8 @@ private:
 	Trace* trace;
 	std::map<std::string, DTAMPoint*> allWrite;
 	std::map<std::string, DTAMPoint*> allRead;
+	struct timeval start, finish;
+	double cost;
 
 public:
 	DTAM(RuntimeDataManager* data);

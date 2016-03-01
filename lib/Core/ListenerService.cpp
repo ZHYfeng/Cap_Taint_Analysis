@@ -178,6 +178,9 @@ void ListenerService::endControl(Executor* executor){
 		if (executor->executionNum == 1) {
 			rdManager.firstDTAMCost = rdManager.DTAMCost + rdManager.taintCost;
 			rdManager.firstPTSCost = rdManager.PTSCost + rdManager.taintCost;
+			rdManager.firstDTAMSerialCost = rdManager.DTAMSerialCost + rdManager.taintCost;
+			rdManager.firstDTAMParallelCost = rdManager.DTAMParallelCost + rdManager.taintCost;
+			rdManager.firstDTAMhybridCost = rdManager.DTAMhybridCost + rdManager.taintCost;
 
 			rdManager.firstDTAMSerial = rdManager.DTAMSerial;
 			rdManager.firstDTAMParallel = rdManager.DTAMParallel;
@@ -187,6 +190,11 @@ void ListenerService::endControl(Executor* executor){
 			rdManager.firstTaintPTS = rdManager.taintPTS;
 			rdManager.firstNoTaintPTS = rdManager.noTaintPTS;
 			rdManager.firstAllTaint = rdManager.firstTaint + rdManager.firstTaintPTS;
+
+			rdManager.firstDTAMSerialMap = rdManager.DTAMSerialMap.size();
+			rdManager.firstDTAMParallelMap = rdManager.DTAMParallelMap.size();
+			rdManager.firstDTAMhybridMap = rdManager.DTAMhybridMap.size();
+			rdManager.firstTaintMap = rdManager.taintMap.size();
 		}
 
 		executor->getNewPrefix();

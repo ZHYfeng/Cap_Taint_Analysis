@@ -491,9 +491,26 @@ void Encode::PTS() {
 			it != PTS.end(); ) {
 		z3_taint_solver.push();
 
-		expr lhs = z3_ctx.bool_const((*it).c_str());
+		std::string varName = (*it) + "_tag";
+		expr lhs = z3_ctx.bool_const(varName.c_str());
 		expr rhs = z3_ctx.bool_val(true);
 		z3_taint_solver.add(lhs == rhs);
+
+//		Event* curr = ifFormula[i].first;
+//		for (unsigned j = 0; j < ifFormula.size(); j++) {
+//			Event* temp = ifFormula[j].first;
+//			expr currIf = z3_ctx.int_const(curr->eventName.c_str());
+//			expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
+//			expr constraint = z3_ctx.bool_val(1);
+//			if (curr->threadId == temp->threadId) {
+//				if (curr->eventId > temp->eventId)
+//					constraint = ifFormula[j].second;
+//			} else
+//				constraint = implies(tempIf < currIf, ifFormula[j].second);
+//			z3_solver.add(constraint);
+//		}
+
+//		std::cerr << "z3_taint_solver \n" << z3_taint_solver;
 
 		check_result result;
 		try {
@@ -507,17 +524,18 @@ void Encode::PTS() {
 			cerr << "taintPTS : " << *it << "\n";
 
 			model m = z3_taint_solver.get_model();
-			for (std::vector<std::string>::iterator itt = it; itt != PTS.end(); itt++) {
-				stringstream ss;
-				ss << m.eval(z3_ctx.bool_const((*itt).c_str()));
-				long isTaint = atoi(ss.str().c_str());
-				if (isTaint != 0) {
-					taintPTS.push_back(*itt);
-					cerr << "taintPTS : " << *itt << "\n";
-					itt--;
-					PTS.erase(itt);
-				}
-			}
+//			std::cerr << "z3_taint_solver.get_model() \n" << m;
+//			for (std::vector<std::string>::iterator itt = it; itt != PTS.end(); itt++) {
+//				stringstream ss;
+//				ss << m.eval(z3_ctx.bool_const((*itt).c_str()));
+//				long isTaint = atoi(ss.str().c_str());
+//				if (isTaint != 0) {
+//					taintPTS.push_back(*itt);
+//					cerr << "taintPTS : " << *itt << "\n";
+//					itt--;
+//					PTS.erase(itt);
+//				}
+//			}
 
 			PTS.erase(it);
 		} else {
@@ -531,13 +549,15 @@ void Encode::PTS() {
 	runtimeData->taintPTS += taintPTS.size();
 	runtimeData->noTaintPTS += noTaintPTS.size();
 
-	std::cerr << "size : " <<  DTAMSerial.size() + taintPTS.size() << "\n";
+	std::cerr << "\n size : " <<  DTAMSerial.size() + taintPTS.size() << "\n";
 	for (std::set<std::string>::iterator it = DTAMSerial.begin();
 				it != DTAMSerial.end(); it++) {
+		runtimeData->taintMap.insert(trace->getAssemblyLine(*it));
 		std::cerr << "name : " << *it << "\n";
 	}
 	for (std::vector<std::string>::iterator it = taintPTS.begin();
-				it != taintPTS.end(); ) {
+				it != taintPTS.end(); it++) {
+		runtimeData->taintMap.insert(trace->getAssemblyLine(*it));
 		std::cerr << "name : " << *it << "\n";
 	}
 }
@@ -946,8 +966,8 @@ void Encode::markLatestWriteForGlobalVar() {
 			continue;
 		for (unsigned index = 0; index < thread->size(); index++) {
 			Event* event = thread->at(index);
-			if (event->usefulGlobal) {
-//			if (event->isGlobal) {
+//			if (event->usefulGlobal) {
+			if (event->isGlobal) {
 				Instruction *I = event->inst->inst;
 				if (StoreInst::classof(I)) { //write
 					latestWriteOneThread[event->varName] = event;
@@ -1985,16 +2005,16 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 //debug
 //print out all the read and write insts of global vars.
 	if (false) {
-		read = trace->readSet.begin();
-		for (; read != trace->readSet.end(); read++) {
+		read = trace->allReadSet.begin();
+		for (; read != trace->allReadSet.end(); read++) {
 			cerr << "global var read:" << read->first << "\n";
 			for (unsigned i = 0; i < read->second.size(); i++) {
 				cerr << read->second[i]->eventName << "---"
 						<< read->second[i]->globalVarFullName << "\n";
 			}
 		}
-		write = trace->writeSet.begin();
-		for (; write != trace->writeSet.end(); write++) {
+		write = trace->allWriteSet.begin();
+		for (; write != trace->allWriteSet.end(); write++) {
 			cerr << "global var write:" << write->first << "\n";
 			for (unsigned i = 0; i < write->second.size(); i++) {
 				cerr << write->second[i]->eventName << "---"
@@ -2003,11 +2023,11 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 		}
 	}
 
-	map<string, vector<Event *> >::iterator ir = trace->readSet.begin(); //key--variable,
+	map<string, vector<Event *> >::iterator ir = trace->allReadSet.begin(); //key--variable,
 	Event *currentRead;
 	Event *currentWrite;
-	for (; ir != trace->readSet.end(); ir++) {
-		map<string, vector<Event *> >::iterator iw = trace->writeSet.find(
+	for (; ir != trace->allReadSet.end(); ir++) {
+		map<string, vector<Event *> >::iterator iw = trace->allWriteSet.find(
 				ir->first);
 		for (unsigned k = 0; k < ir->second.size(); k++) {
 			vector<expr> oneVarAllRead;
@@ -2016,7 +2036,7 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 			//compute the write set that may be used by currentRead;
 			vector<Event *> mayBeRead;
 			unsigned currentWriteThreadId;
-			if (iw != trace->writeSet.end()) {
+			if (iw != trace->allWriteSet.end()) {
 				for (unsigned i = 0; i < iw->second.size(); i++) {
 					if (iw->second[i]->threadId == currentRead->threadId)
 						continue;

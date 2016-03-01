@@ -40,9 +40,15 @@ RuntimeDataManager::RuntimeDataManager() :
 	taintCost = 0;
 	PTSCost = 0;
 	DTAMCost = 0;
+	DTAMSerialCost = 0;
+	DTAMParallelCost = 0;
+	DTAMhybridCost = 0;
 
 	firstPTSCost = 0;
 	firstDTAMCost = 0;
+	firstDTAMSerialCost = 0;
+	firstDTAMParallelCost = 0;
+	firstDTAMhybridCost = 0;
 
 	DTAMSerial = 0;
 	DTAMParallel = 0;
@@ -61,6 +67,11 @@ RuntimeDataManager::RuntimeDataManager() :
 	firstTaintPTS = 0;
 	firstNoTaintPTS = 0;
 	firstAllTaint = 0;
+
+	firstDTAMSerialMap = 0;
+	firstDTAMParallelMap = 0;
+	firstDTAMhybridMap = 0;
+	firstTaintMap = 0;
 }
 
 RuntimeDataManager::~RuntimeDataManager() {
@@ -115,6 +126,9 @@ RuntimeDataManager::~RuntimeDataManager() {
 
 	ss << "PTSCost:" << PTSCost + taintCost << "\n";
 	ss << "DTAMCost:" << DTAMCost + taintCost << "\n";
+	ss << "DTAMSerialCost:" << DTAMSerialCost + taintCost << "\n";
+	ss << "DTAMParallelCost:" << DTAMParallelCost + taintCost << "\n";
+	ss << "DTAMhybridCost:" << DTAMhybridCost + taintCost << "\n";
 
 
 	ss << "DTAMSerial:" << DTAMSerial << "\n";
@@ -128,6 +142,9 @@ RuntimeDataManager::~RuntimeDataManager() {
 
 	ss << "firstPTSCost:" << firstPTSCost << "\n";
 	ss << "firstDTAMCost:" << firstDTAMCost << "\n";
+	ss << "firstDTAMSerialCost:" << firstDTAMSerialCost << "\n";
+	ss << "firstDTAMParallelCost:" << firstDTAMParallelCost << "\n";
+	ss << "firstDTAMhybridCost:" << firstDTAMhybridCost << "\n";
 
 
 	ss << "firstDTAMSerial:" << firstDTAMSerial << "\n";
@@ -138,6 +155,16 @@ RuntimeDataManager::~RuntimeDataManager() {
 	ss << "firstTaintPTS:" << firstTaintPTS << "\n";
 	ss << "firstNoTaintPTS:" << firstNoTaintPTS << "\n";
 	ss << "firstAllTaint:" << firstAllTaint << "\n";
+
+	ss << "taintMap:" << taintMap.size() << "\n";
+	ss << "DTAMSerialMap:" << DTAMSerialMap.size() << "\n";
+	ss << "DTAMParallelMap:" << DTAMParallelMap.size() << "\n";
+	ss << "DTAMhybridMap:" << DTAMhybridMap.size() << "\n";
+
+	ss << "firstTaintMap:" << firstTaintMap << "\n";
+	ss << "firstDTAMSerialMap:" << firstDTAMSerialMap << "\n";
+	ss << "firstDTAMParallelMap:" << firstDTAMParallelMap << "\n";
+	ss << "firstDTAMhybridMap:" << firstDTAMhybridMap << "\n";
 
 	out_to_file << ss.str();
 	out_to_file.close();

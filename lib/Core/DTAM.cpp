@@ -12,6 +12,7 @@ namespace klee {
 DTAM::DTAM(RuntimeDataManager* data) :
 		runtimeData(data) {
 	trace = runtimeData->getCurrentTrace();
+	cost = 0;
 }
 
 DTAM::~DTAM() {
@@ -144,7 +145,7 @@ void DTAM::getTaint(std::set<std::string> &taint) {
 		DTAMPoint *point = (*it).second;
 		if (point->isTaint == true) {
 			std::string name = point->name;
-			std::cerr << "name : " << name << "\n";
+//			std::cerr << "name : " << name << "\n";
 //			std::cerr << "vector clock :";
 //			for (unsigned i = 0; i < point->vectorClock.size(); i++) {
 //				std::cerr << " " << point->vectorClock[i];
@@ -159,7 +160,7 @@ void DTAM::getTaint(std::set<std::string> &taint) {
 		DTAMPoint *point = (*it).second;
 		if (point->isTaint == true) {
 			std::string name = point->name;
-			std::cerr << "name : " << name << "\n";
+//			std::cerr << "name : " << name << "\n";
 //			std::cerr << "vector clock :";
 //			for (unsigned i = 0; i < point->vectorClock.size(); i++) {
 //				std::cerr << " " << point->vectorClock[i];
@@ -177,23 +178,46 @@ void DTAM::dtam() {
 	for (std::set<std::string>::iterator it = trace->DTAMSerial.begin(), ie =
 			trace->DTAMSerial.end(); it != ie; it++) {
 		std::string name = (*it);
+		runtimeData->DTAMSerialMap.insert(trace->getAssemblyLine(name));
 		std::cerr << "name : " << name << "\n";
 	}
 	runtimeData->DTAMSerial += trace->DTAMSerial.size();
 
+	gettimeofday(&start, NULL);
 	std::cerr << "\n DTAMParallel : \n";
 	DTAMParallel();
 	std::cerr << "\n DTAMParallel : \n";
 	initTaint();
 	getTaint(trace->DTAMParallel);
+	for (std::set<std::string>::iterator it = trace->DTAMParallel.begin(), ie =
+			trace->DTAMParallel.end(); it != ie; it++) {
+		std::string name = (*it);
+		runtimeData->DTAMParallelMap.insert(trace->getAssemblyLine(name));
+		std::cerr << "name : " << name << "\n";
+	}
 	runtimeData->DTAMParallel += trace->DTAMParallel.size();
+	gettimeofday(&finish, NULL);
+	cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+			- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+	runtimeData->DTAMParallelCost += cost;
 
+	gettimeofday(&start, NULL);
 	std::cerr << "\n DTAMhybrid : \n";
 	DTAMhybrid();
 	std::cerr << "\n DTAMhybrid : \n";
 	initTaint();
 	getTaint(trace->DTAMhybrid);
+	for (std::set<std::string>::iterator it = trace->DTAMhybrid.begin(), ie =
+			trace->DTAMhybrid.end(); it != ie; it++) {
+		std::string name = (*it);
+		runtimeData->DTAMhybridMap.insert(trace->getAssemblyLine(name));
+		std::cerr << "name : " << name << "\n";
+	}
 	runtimeData->DTAMhybrid += trace->DTAMhybrid.size();
+	gettimeofday(&finish, NULL);
+	cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
+			- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
+	runtimeData->DTAMhybridCost += cost;
 }
 
 }
