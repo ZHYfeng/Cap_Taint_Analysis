@@ -258,6 +258,7 @@ void Trace::insertEvent(Event* event, unsigned threadId) {
 		eventList[threadId] = new vector<Event*>();
 	}
 	eventList[threadId]->push_back(event);
+	event->threadEventId = eventList[threadId]->size();
 }
 
 Event* Trace::createEvent(unsigned threadId, KInstruction* inst,
@@ -587,7 +588,7 @@ bool Trace::isEqual(Trace* trace) {
 	return same;
 }
 
-unsigned Trace::getAssemblyLine(std::string name) {
+std::string Trace::getAssemblyLine(std::string name) {
 	std::stringstream varName;
 	varName.str("");
 	unsigned int i = 0;
@@ -595,22 +596,24 @@ unsigned Trace::getAssemblyLine(std::string name) {
 		varName << name.at(i);
 		i++;
 	}
+//	std::cerr << "getAssemblyLine name : " << name << "\n";
 	std::map<std::string, std::vector<Event *> >::iterator all;
 	if (name.at(i) == 'S') {
 		all = allWriteSet.find(varName.str());
 		if (all == allWriteSet.end()) {
-			assert(0 && "getAssemblyLine can not find");
+			assert(0 && "allWriteSet getAssemblyLine can not find");
 		}
 	} else {
 		all = allReadSet.find(varName.str());
 		if (all == allReadSet.end()) {
-			assert(0 && "getAssemblyLine can not find");
+			assert(0 && "allReadSet getAssemblyLine can not find");
 		}
 	}
 	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
 			all->second.end(); it != ie; it++) {
 		if ((*it)->globalVarFullName == name) {
-			return (*it)->inst->info->assemblyLine;
+//			return  Transfer::uint64toString((*it)->threadId) + "_" + Transfer::uint64toString((*it)->threadEventId);
+			return  Transfer::uint64toString((*it)->inst->info->assemblyLine);
 		}
 	}
 	assert (0 && "getAssemblyLine can not find");

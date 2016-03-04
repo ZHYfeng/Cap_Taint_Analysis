@@ -19,11 +19,20 @@ DTAMPoint::~DTAMPoint() {
 }
 
 bool DTAMPoint::isBefore(DTAMPoint *point) {
+	unsigned before = 0, after = 0, equal = 0;
 	for (unsigned i = 0; i < vectorClock.size(); i++) {
 		if(vectorClock[i] > point->vectorClock[i]){
-			return false;
+			after++;
+		} else if (vectorClock[i] < point->vectorClock[i]) {
+			before++;
+		} else {
+			equal++;
 		}
 	}
-	return true;
+	if (before == 0 && after > 0) {
+		return false;
+	} else {
+		return true;
+	}
 }
 

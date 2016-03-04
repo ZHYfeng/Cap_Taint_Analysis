@@ -363,6 +363,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
 		allReadSet.insert(*nit);
 		varName = nit->first;
+		std::cerr << "allReadSet varName : " << varName << "\n";
 		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulReadSet.insert(*nit);
 			if (varThread.find(varName) == varThread.end()) {
@@ -567,7 +568,9 @@ void DealWithSymbolicExpr::filterUselessByTaint(Trace* trace) {
 		varName = *it;
 		for (std::vector<std::string>::iterator itt = unTaint.begin();
 				itt != unTaint.end(); ) {
-			if (varRelatedSymbolicExpr[*itt]->find(varName) != varRelatedSymbolicExpr[*itt]->end()) {
+			if (varRelatedSymbolicExpr.find(*itt) == varRelatedSymbolicExpr.end()) {
+				itt++;
+			} else if (varRelatedSymbolicExpr[*itt]->find(varName) != varRelatedSymbolicExpr[*itt]->end()) {
 				taint.push_back(*itt);
 				unTaint.erase(itt);
 			} else {
@@ -576,9 +579,11 @@ void DealWithSymbolicExpr::filterUselessByTaint(Trace* trace) {
 		}
 	}
 
+	std::cerr << "filterUselessByTaint\n";
 	for (std::vector<std::string>::iterator it = taint.begin(),
 			ie = taint.end(); it != ie; it++) {
 		varName = *it;
+		std::cerr << "taint : " << varName << "\n";
 		if (taintSymbolicExpr.find(varName) == taintSymbolicExpr.end()) {
 			potentialTaintSymbolicExpr.insert(varName);
 		}

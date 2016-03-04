@@ -73,12 +73,24 @@ void DTAM::DTAMhybrid() {
 	for (std::map<std::string, DTAMPoint*>::iterator it = allWrite.begin(), ie =
 			allWrite.end(); it != ie; it++) {
 		DTAMPoint *point = (*it).second;
+		std::string name = point->name;
+		std::cerr << "name : " << name << "\n";
+		for (unsigned i = 0; i < point->vectorClock.size(); i++) {
+			std::cerr << point->vectorClock[i] << " ";
+		}
+		std::cerr << "\n";
 		for (std::vector<DTAMPoint*>::iterator itt =
 				point->affectingVariable.begin();
 				itt < point->affectingVariable.end();) {
+			std::cerr << "affectingVariable name : " << (*itt)->name;
+			for (unsigned i = 0; i < (*itt)->vectorClock.size(); i++) {
+				std::cerr << (*itt)->vectorClock[i] << " ";
+			}
+			std::cerr << "\n";
 			if (point->isBefore(*itt)) {
 				itt++;
 			} else {
+				std::cerr << "erase\n";
 				for (std::vector<DTAMPoint*>::iterator ittt =
 						(*itt)->affectingVariable.begin();
 						ittt < (*itt)->affectingVariable.end(); ittt++) {
@@ -175,13 +187,17 @@ void DTAM::getTaint(std::set<std::string> &taint) {
 void DTAM::dtam() {
 
 	std::cerr << "\n DTAMSerial : \n";
+	std::cerr << "size : " << trace->DTAMSerial.size() << "\n";
 	for (std::set<std::string>::iterator it = trace->DTAMSerial.begin(), ie =
 			trace->DTAMSerial.end(); it != ie; it++) {
 		std::string name = (*it);
 		runtimeData->DTAMSerialMap.insert(trace->getAssemblyLine(name));
+		trace->DTAMSerialMap.insert(trace->getAssemblyLine(name));
 		std::cerr << "name : " << name << "\n";
 	}
+	runtimeData->allDTAMSerialMap.push_back(trace->DTAMSerialMap.size());
 	runtimeData->DTAMSerial += trace->DTAMSerial.size();
+	runtimeData->allDTAMSerial.push_back(trace->DTAMSerial.size());
 
 	gettimeofday(&start, NULL);
 	std::cerr << "\n DTAMParallel : \n";
@@ -193,13 +209,17 @@ void DTAM::dtam() {
 			trace->DTAMParallel.end(); it != ie; it++) {
 		std::string name = (*it);
 		runtimeData->DTAMParallelMap.insert(trace->getAssemblyLine(name));
+		trace->DTAMParallelMap.insert(trace->getAssemblyLine(name));
 		std::cerr << "name : " << name << "\n";
 	}
+	runtimeData->allDTAMParallelMap.push_back(trace->DTAMParallelMap.size());
 	runtimeData->DTAMParallel += trace->DTAMParallel.size();
+	runtimeData->allDTAMParallel.push_back(trace->DTAMParallel.size());
 	gettimeofday(&finish, NULL);
 	cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 			- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 	runtimeData->DTAMParallelCost += cost;
+	runtimeData->allDTAMParallelCost.push_back(cost);
 
 	gettimeofday(&start, NULL);
 	std::cerr << "\n DTAMhybrid : \n";
@@ -211,13 +231,18 @@ void DTAM::dtam() {
 			trace->DTAMhybrid.end(); it != ie; it++) {
 		std::string name = (*it);
 		runtimeData->DTAMhybridMap.insert(trace->getAssemblyLine(name));
+		trace->DTAMhybridMap.insert(trace->getAssemblyLine(name));
 		std::cerr << "name : " << name << "\n";
 	}
+	runtimeData->allDTAMhybridMap.push_back(trace->DTAMhybridMap.size());
+	std::cerr << "\n";
 	runtimeData->DTAMhybrid += trace->DTAMhybrid.size();
+	runtimeData->allDTAMhybrid.push_back(trace->DTAMhybrid.size());
 	gettimeofday(&finish, NULL);
 	cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 			- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 	runtimeData->DTAMhybridCost += cost;
+	runtimeData->allDTAMhybridCost.push_back(cost);
 }
 
 }

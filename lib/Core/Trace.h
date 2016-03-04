@@ -86,6 +86,11 @@ public:
 	std::vector<std::string> taintPTS;
 	std::vector<std::string> noTaintPTS;
 
+	std::set<std::string> taintMap;
+	std::set<std::string> DTAMSerialMap;
+	std::set<std::string> DTAMParallelMap;
+	std::set<std::string> DTAMhybridMap;
+
 	Trace();
 
 	virtual ~Trace();
@@ -125,7 +130,7 @@ public:
 	void createAbstract();
 	bool isEqual(Trace* trace);
 
-	unsigned getAssemblyLine(std::string name);
+	std::string getAssemblyLine(std::string name);
 
 private:
 	/*******************added by xdzhang**********************/

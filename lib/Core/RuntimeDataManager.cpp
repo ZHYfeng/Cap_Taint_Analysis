@@ -40,15 +40,8 @@ RuntimeDataManager::RuntimeDataManager() :
 	taintCost = 0;
 	PTSCost = 0;
 	DTAMCost = 0;
-	DTAMSerialCost = 0;
 	DTAMParallelCost = 0;
 	DTAMhybridCost = 0;
-
-	firstPTSCost = 0;
-	firstDTAMCost = 0;
-	firstDTAMSerialCost = 0;
-	firstDTAMParallelCost = 0;
-	firstDTAMhybridCost = 0;
 
 	DTAMSerial = 0;
 	DTAMParallel = 0;
@@ -57,21 +50,7 @@ RuntimeDataManager::RuntimeDataManager() :
 	taint = 0;
 	taintPTS = 0;
 	noTaintPTS = 0;
-	allTaint = 0;
 
-	firstDTAMSerial = 0;
-	firstDTAMParallel = 0;
-	firstDTAMhybrid = 0;
-
-	firstTaint = 0;
-	firstTaintPTS = 0;
-	firstNoTaintPTS = 0;
-	firstAllTaint = 0;
-
-	firstDTAMSerialMap = 0;
-	firstDTAMParallelMap = 0;
-	firstDTAMhybridMap = 0;
-	firstTaintMap = 0;
 }
 
 RuntimeDataManager::~RuntimeDataManager() {
@@ -124,11 +103,11 @@ RuntimeDataManager::~RuntimeDataManager() {
 	ss << "SolvingCost:" << solvingCost << "\n";
 	ss << "RunningCost:" << runningCost << "\n";
 
-	ss << "PTSCost:" << PTSCost + taintCost << "\n";
-	ss << "DTAMCost:" << DTAMCost + taintCost << "\n";
-	ss << "DTAMSerialCost:" << DTAMSerialCost + taintCost << "\n";
-	ss << "DTAMParallelCost:" << DTAMParallelCost + taintCost << "\n";
-	ss << "DTAMhybridCost:" << DTAMhybridCost + taintCost << "\n";
+	ss << "taintCost:" << taintCost << "\n";
+	ss << "PTSCost:" << PTSCost << "\n";
+	ss << "DTAMCost:" << DTAMCost << "\n";
+	ss << "DTAMParallelCost:" << DTAMParallelCost << "\n";
+	ss << "DTAMhybridCost:" << DTAMhybridCost << "\n";
 
 
 	ss << "DTAMSerial:" << DTAMSerial << "\n";
@@ -138,33 +117,35 @@ RuntimeDataManager::~RuntimeDataManager() {
 	ss << "taint:" << taint << "\n";
 	ss << "taintPTS:" << taintPTS << "\n";
 	ss << "noTaintPTS:" << noTaintPTS << "\n";
-	ss << "allTaint:" << taint + taintPTS << "\n";
-
-	ss << "firstPTSCost:" << firstPTSCost << "\n";
-	ss << "firstDTAMCost:" << firstDTAMCost << "\n";
-	ss << "firstDTAMSerialCost:" << firstDTAMSerialCost << "\n";
-	ss << "firstDTAMParallelCost:" << firstDTAMParallelCost << "\n";
-	ss << "firstDTAMhybridCost:" << firstDTAMhybridCost << "\n";
-
-
-	ss << "firstDTAMSerial:" << firstDTAMSerial << "\n";
-	ss << "firstDTAMParallel:" << firstDTAMParallel << "\n";
-	ss << "firstDTAMhybrid:" << firstDTAMhybrid << "\n";
-
-	ss << "firstTaint:" << firstTaint << "\n";
-	ss << "firstTaintPTS:" << firstTaintPTS << "\n";
-	ss << "firstNoTaintPTS:" << firstNoTaintPTS << "\n";
-	ss << "firstAllTaint:" << firstAllTaint << "\n";
 
 	ss << "taintMap:" << taintMap.size() << "\n";
 	ss << "DTAMSerialMap:" << DTAMSerialMap.size() << "\n";
 	ss << "DTAMParallelMap:" << DTAMParallelMap.size() << "\n";
 	ss << "DTAMhybridMap:" << DTAMhybridMap.size() << "\n";
 
-	ss << "firstTaintMap:" << firstTaintMap << "\n";
-	ss << "firstDTAMSerialMap:" << firstDTAMSerialMap << "\n";
-	ss << "firstDTAMParallelMap:" << firstDTAMParallelMap << "\n";
-	ss << "firstDTAMhybridMap:" << firstDTAMhybridMap << "\n";
+	for (unsigned i =0; i < allTaintCost.size(); i++) {
+
+		ss << "allTaintCost:" << allTaintCost[i] << "\n";
+		ss << "allPTSCost:" << allPTSCost[i] << "\n";
+		ss << "allDTAMCost:" << allDTAMCost[i] << "\n";
+		ss << "allDTAMParallelCost:" << allDTAMParallelCost[i] << "\n";
+		ss << "allDTAMhybridCost:" << allDTAMhybridCost[i] << "\n";
+
+		ss << "allDTAMSerial:" << allDTAMSerial[i] << "\n";
+		ss << "allDTAMParallel:" << allDTAMParallel[i] << "\n";
+		ss << "allDTAMhybrid:" << allDTAMhybrid[i] << "\n";
+
+		ss << "allTaint:" << allTaint[i] << "\n";
+		ss << "allTaintPTS:" << allTaintPTS[i] << "\n";
+		ss << "allNoTaintPTS:" << allNoTaintPTS[i] << "\n";
+
+		ss << "allDTAMSerialMap:" << allDTAMSerialMap[i] << "\n";
+		ss << "allDTAMParallelMap:" << allDTAMParallelMap[i] << "\n";
+		ss << "allDTAMhybridMap:" << allDTAMhybridMap[i] << "\n";
+		ss << "allTaintMap:" << allTaintMap[i] << "\n";
+
+	}
+
 
 	out_to_file << ss.str();
 	out_to_file.close();

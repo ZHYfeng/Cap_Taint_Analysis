@@ -40,7 +40,6 @@ public:
 	double taintCost;
 	double PTSCost;
 	double DTAMCost;
-	double DTAMSerialCost;
 	double DTAMParallelCost;
 	double DTAMhybridCost;
 
@@ -51,27 +50,27 @@ public:
 	unsigned taint;
 	unsigned taintPTS;
 	unsigned noTaintPTS;
-	unsigned allTaint;
 
-	double firstPTSCost;
-	double firstDTAMCost;
-	double firstDTAMSerialCost;
-	double firstDTAMParallelCost;
-	double firstDTAMhybridCost;
+	std::vector<double> allTaintCost;
+	std::vector<double> allPTSCost;
+	std::vector<double> allDTAMCost;
+	std::vector<double> allDTAMParallelCost;
+	std::vector<double> allDTAMhybridCost;
 
-	unsigned firstDTAMSerial;
-	unsigned firstDTAMParallel;
-	unsigned firstDTAMhybrid;
+	std::vector<unsigned> allDTAMSerial;
+	std::vector<unsigned> allDTAMParallel;
+	std::vector<unsigned> allDTAMhybrid;
 
-	unsigned firstTaint;
-	unsigned firstTaintPTS;
-	unsigned firstNoTaintPTS;
-	unsigned firstAllTaint;
+	std::vector<unsigned> allTaint;
+	std::vector<unsigned> allTaintPTS;
+	std::vector<unsigned> allNoTaintPTS;
 
-	unsigned firstDTAMSerialMap;
-	unsigned firstDTAMParallelMap;
-	unsigned firstDTAMhybridMap;
-	unsigned firstTaintMap;
+	std::vector<unsigned> allDTAMSerialMap;
+	std::vector<unsigned> allDTAMParallelMap;
+	std::vector<unsigned> allDTAMhybridMap;
+	std::vector<unsigned> allTaintMap;
+
+
 
 	RuntimeDataManager();
 	virtual ~RuntimeDataManager();
@@ -86,10 +85,10 @@ public:
 	void printAllPrefix(std::ostream &out);
 	void printAllTrace(std::ostream &out);
 
-	std::set<unsigned> taintMap;
-	std::set<unsigned> DTAMSerialMap;
-	std::set<unsigned> DTAMParallelMap;
-	std::set<unsigned> DTAMhybridMap;
+	std::set<std::string> taintMap;
+	std::set<std::string> DTAMSerialMap;
+	std::set<std::string> DTAMParallelMap;
+	std::set<std::string> DTAMhybridMap;
 };
 
 }

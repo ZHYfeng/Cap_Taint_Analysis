@@ -159,6 +159,7 @@ void ListenerService::endControl(Executor* executor){
 		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.taintCost += cost;
+		rdManager.allTaintCost.push_back(cost);
 
 		gettimeofday(&start, NULL);
 		dtam = new DTAM(&rdManager);
@@ -167,6 +168,7 @@ void ListenerService::endControl(Executor* executor){
 		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.DTAMCost += cost;
+		rdManager.allDTAMCost.push_back(cost);
 
 		gettimeofday(&start, NULL);
 		encode->PTS();
@@ -174,28 +176,7 @@ void ListenerService::endControl(Executor* executor){
 		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
 		rdManager.PTSCost += cost;
-
-		if (executor->executionNum == 1) {
-			rdManager.firstDTAMCost = rdManager.DTAMCost + rdManager.taintCost;
-			rdManager.firstPTSCost = rdManager.PTSCost + rdManager.taintCost;
-			rdManager.firstDTAMSerialCost = rdManager.DTAMSerialCost + rdManager.taintCost;
-			rdManager.firstDTAMParallelCost = rdManager.DTAMParallelCost + rdManager.taintCost;
-			rdManager.firstDTAMhybridCost = rdManager.DTAMhybridCost + rdManager.taintCost;
-
-			rdManager.firstDTAMSerial = rdManager.DTAMSerial;
-			rdManager.firstDTAMParallel = rdManager.DTAMParallel;
-			rdManager.firstDTAMhybrid = rdManager.DTAMhybrid;
-
-			rdManager.firstTaint = rdManager.taint;
-			rdManager.firstTaintPTS = rdManager.taintPTS;
-			rdManager.firstNoTaintPTS = rdManager.noTaintPTS;
-			rdManager.firstAllTaint = rdManager.firstTaint + rdManager.firstTaintPTS;
-
-			rdManager.firstDTAMSerialMap = rdManager.DTAMSerialMap.size();
-			rdManager.firstDTAMParallelMap = rdManager.DTAMParallelMap.size();
-			rdManager.firstDTAMhybridMap = rdManager.DTAMhybridMap.size();
-			rdManager.firstTaintMap = rdManager.taintMap.size();
-		}
+		rdManager.allPTSCost.push_back(cost);
 
 		executor->getNewPrefix();
 		break;

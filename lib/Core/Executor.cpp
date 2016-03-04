@@ -4189,6 +4189,7 @@ unsigned Executor::executePThreadCreate(ExecutionState &state, KInstruction *ki,
 		for (unsigned i = 0; i < thread->vectorClock.size(); i++) {
 			newThread->vectorClock[i] = thread->vectorClock[i];
 		}
+		newThread->vectorClock[newThread->threadId]++;
 
 		bindArgument(kthreadEntrance, 0, newThread, arguments[3]);
 		if (statsTracker)
@@ -4301,6 +4302,7 @@ unsigned Executor::executePThreadCondSignal(ExecutionState &state,
 					tthread->vectorClock[i] = thread->vectorClock[i];
 				}
 			}
+			thread->vectorClock[thread->threadId]++;
 
 		}
 	} else {
@@ -4338,6 +4340,7 @@ unsigned Executor::executePThreadCondBroadcast(ExecutionState &state,
 					tthread->vectorClock[i] = thread->vectorClock[i];
 				}
 			}
+			thread->vectorClock[thread->threadId]++;
 
 		}
 	} else {

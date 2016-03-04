@@ -64,6 +64,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 	Trace* trace = rdManager->getCurrentTrace();
 	Instruction* inst = ki->inst;
 	Thread* thread = state.currentThread;
+//	std::cerr << "thread id : " << thread->threadId << " ";
 //	inst->dump();
 	if ((*currentEvent)) {
 		switch (inst->getOpcode()) {
@@ -215,8 +216,12 @@ void TaintListener::executeInstruction(ExecutionState &state,
 				isFloat = 1;
 			}
 			if ((*currentEvent)->isGlobal) {
+#if PTR
 				if (isFloat || id == Type::IntegerTyID
 						|| id == Type::PointerTyID) {
+#else
+				if (isFloat || id == Type::IntegerTyID) {
+#endif
 					Expr::Width size = executor->getWidthForLLVMType(
 							ki->inst->getOperand(0)->getType());
 					ref<Expr> symbolic = manualMakeTaintSymbolic(state,
@@ -247,6 +252,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					}
 					ref<Expr> constraint = EqExpr::create(temp, symbolic);
 					trace->taintExpr.push_back(constraint);
+//					cerr << constraint << "isTaint : " << isTaint << "\n" ;
 
 					if (value->getKind() == Expr::Constant) {
 
@@ -430,8 +436,10 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			}
 			if (isTaint) {
 				manualMakeTaint(value, true);
-				if ((*currentEvent)->isGlobal) {
+				if (!inst->getType()->isPointerTy() && (*currentEvent)->isGlobal) {
 					trace->DTAMSerial.insert((*currentEvent)->globalVarFullName);
+//					std::cerr << "globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
+//					inst->dump();
 				}
 
 			} else {
@@ -507,9 +515,9 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			} else if (f->getName().str() == "pthread_cond_broadcast") {
 				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_mutex_lock") {
-				thread->vectorClock[thread->threadId]++;
+//				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_mutex_unlock") {
-				thread->vectorClock[thread->threadId]++;
+//				thread->vectorClock[thread->threadId]++;
 			} else if (f->getName().str() == "pthread_barrier_wait") {
 				assert(0 && "目前没做");
 			}

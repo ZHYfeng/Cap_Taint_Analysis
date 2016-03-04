@@ -60,6 +60,7 @@ public:
 public:
 	unsigned threadId; //threadID
 	unsigned eventId; //eventID
+	unsigned threadEventId;
 	std::string eventName; //eventName
 	KInstruction* inst; //associated kinst
 	std::string varName; //name of global variable
