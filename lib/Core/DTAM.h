@@ -26,6 +26,7 @@ private:
 	std::map<std::string, DTAMPoint*> allRead;
 	struct timeval start, finish;
 	double cost;
+	DealWithSymbolicExpr filter;
 
 public:
 	DTAM(RuntimeDataManager* data);

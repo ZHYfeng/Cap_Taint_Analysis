@@ -472,13 +472,13 @@ void Encode::showInitTrace() {
 
 void Encode::PTS() {
 
-	Trace *trace = runtimeData->getCurrentTrace();
+//	Trace *trace = runtimeData->getCurrentTrace();
 
-	filter.filterUselessByTaint(trace);
+//	filter.filterUselessByTaint(trace);
 
 	buildPTSFormula();
 
-//	std::cerr << "z3_taint_solver \n" << z3_taint_solver;
+	std::cerr << "z3_taint_solver \n" << z3_taint_solver;
 
 	cerr << "PTS\n";
 
@@ -532,6 +532,8 @@ void Encode::PTS() {
 			if (DTAMhybrid.find(*it) == DTAMhybrid.end()) {
 				cerr << "taintPTS : " << *it << "\n";
 				cerr << "DTAMhybrid not find" << "\n";
+				model m = z3_taint_solver.get_model();
+				std::cerr << "z3_taint_solver.get_model() \n" << m;
 			}
 //			cerr << "taintPTS : " << *it << "\n";
 //			std::cerr << "z3_taint_solver \n" << z3_taint_solver;
@@ -2049,17 +2051,14 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 		}
 	}
 
-	std::set<std::string> &taintSymbolicExpr = trace->taintSymbolicExpr;
 	std::set<std::string> &potentialTaintSymbolicExpr = trace->potentialTaintSymbolicExpr;
 
 	map<string, vector<Event *> >::iterator ir = trace->allReadSet.begin(); //key--variable,
 	Event *currentRead;
 	Event *currentWrite;
 	for (; ir != trace->allReadSet.end(); ir++) {
-		if ((taintSymbolicExpr.find(ir->first) != taintSymbolicExpr.end())
-				|| (potentialTaintSymbolicExpr.find(ir->first)
-						!= potentialTaintSymbolicExpr.end())) {
-//			std::cerr << "trace->allReadSet : " << ir->first << "\n";
+		if (potentialTaintSymbolicExpr.find(ir->first) != potentialTaintSymbolicExpr.end()) {
+			std::cerr << "trace->allReadSet : " << ir->first << "\n";
 			map<string, vector<Event *> >::iterator iw =
 					trace->allWriteSet.find(ir->first);
 			for (unsigned k = 0; k < ir->second.size(); k++) {
@@ -2154,6 +2153,13 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 			}
 		} else {
 //			std::cerr << "not find : " << ir->first << "\n";
+			for (unsigned k = 0; k < ir->second.size(); k++) {
+				std::string varName = ir->second[k]->globalVarFullName + "_tag";
+		//		cerr << "varName : " << varName << "\n";
+				expr lhs = z3_ctx.bool_const(varName.c_str());
+				expr rhs = z3_ctx.bool_val(false);
+				z3_solver_tm.add(lhs == rhs);
+			}
 		}
 	}
 }

@@ -64,8 +64,8 @@ void TaintListener::executeInstruction(ExecutionState &state,
 	Trace* trace = rdManager->getCurrentTrace();
 	Instruction* inst = ki->inst;
 	Thread* thread = state.currentThread;
-//	std::cerr << "thread id : " << thread->threadId << " ";
-//	inst->dump();
+	std::cerr << "thread id : " << thread->threadId << " ";
+	inst->dump();
 	if ((*currentEvent)) {
 		switch (inst->getOpcode()) {
 		case Instruction::Br: {
@@ -252,7 +252,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					}
 					ref<Expr> constraint = EqExpr::create(temp, symbolic);
 					trace->taintExpr.push_back(constraint);
-//					cerr << constraint << "isTaint : " << isTaint << "\n" ;
+					cerr << constraint << "isTaint : " << isTaint << "\n" ;
 
 					if (value->getKind() == Expr::Constant) {
 
@@ -406,7 +406,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 							(*currentEvent)->globalVarFullName, size);
 					executor->setDestCell(thread, ki, symbolic);
 					symbolicMap[(*currentEvent)->globalVarFullName] = value;
-
+					std::cerr << "globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
 				}
 			} else {
 				//会丢失指针的一些关系约束，但是不影响。
@@ -438,7 +438,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 				manualMakeTaint(value, true);
 				if (!inst->getType()->isPointerTy() && (*currentEvent)->isGlobal) {
 					trace->DTAMSerial.insert((*currentEvent)->globalVarFullName);
-//					std::cerr << "globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
+
 //					inst->dump();
 				}
 

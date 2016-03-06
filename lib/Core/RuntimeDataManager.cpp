@@ -125,6 +125,8 @@ RuntimeDataManager::~RuntimeDataManager() {
 
 	for (unsigned i =0; i < allTaintCost.size(); i++) {
 
+		ss << "\n";
+		ss << "times:" << i << "\n";
 		ss << "allTaintCost:" << allTaintCost[i] << "\n";
 		ss << "allPTSCost:" << allPTSCost[i] << "\n";
 		ss << "allDTAMCost:" << allDTAMCost[i] << "\n";
@@ -145,6 +147,8 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "allTaintMap:" << allTaintMap[i] << "\n";
 
 	}
+
+	ss << "\n";
 
 
 	out_to_file << ss.str();

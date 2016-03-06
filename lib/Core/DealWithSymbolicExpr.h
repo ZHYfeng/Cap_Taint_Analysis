@@ -35,6 +35,7 @@ public:
 	static void resolveSymbolicExpr(ref<Expr> value, std::set<std::string>* relatedSymbolicExpr);
 	static void resolveTaintExpr(ref<klee::Expr> value, std::vector<ref<klee::Expr> >* relatedSymbolicExpr, bool* isTaint);
 	static std::string getVarName(ref<Expr> value);
+	static std::string getVarName(std::string globalVarFullName);
 	static std::string getFullName(ref<Expr> value);
 
 };

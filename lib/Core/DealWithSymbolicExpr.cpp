@@ -45,6 +45,18 @@ std::string DealWithSymbolicExpr::getVarName(ref<klee::Expr> value) {
 	return varName.str();
 }
 
+std::string DealWithSymbolicExpr::getVarName(std::string globalVarFullName) {
+//	std::cerr << "getVarName : " << value << "\n";
+	std::stringstream varName;
+	varName.str("");
+	unsigned int i = 0;
+	while ((globalVarFullName.at(i) != 'S') && (globalVarFullName.at(i) != 'L')) {
+		varName << globalVarFullName.at(i);
+		i++;
+	}
+	return varName.str();
+}
+
 std::string DealWithSymbolicExpr::getFullName(ref<klee::Expr> value) {
 
 	ReadExpr *revalue;
