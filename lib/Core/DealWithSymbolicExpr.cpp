@@ -375,7 +375,7 @@ void DealWithSymbolicExpr::filterUseless(Trace* trace) {
 			readSet.begin(), nie = readSet.end(); nit != nie; ++nit) {
 		allReadSet.insert(*nit);
 		varName = nit->first;
-		std::cerr << "allReadSet varName : " << varName << "\n";
+//		std::cerr << "allReadSet varName : " << varName << "\n";
 		if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end() || OP1) {
 			usefulReadSet.insert(*nit);
 			if (varThread.find(varName) == varThread.end()) {
